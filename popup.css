@@ -1,0 +1,86 @@
+body {
+		font-family: sans-serif;
+		font-size: 1.1em;
+}
+
+.siteurl_h {
+		text-align: center;
+		margin-top: 0.5em;
+		margin-bottom: 0.5em;
+		border-style: none none double none;
+}
+
+.page {
+		display: none;
+}
+
+.btn {
+		border: 0px;
+		background-color: lightskyblue;
+		border-radius: 2px;
+		margin: 2px;
+}
+
+.btn:hover {
+		background-color: deepskyblue;
+}
+
+.login_grid {
+		display: grid;
+		grid-template-columns: 1fr 2fr;
+}
+
+.row {
+		display: flex;
+		flex-direction: row;
+}
+
+.row_cell {
+		flex: 1;
+}
+
+#oldaccts {
+		width: 100%;
+		border-style: none none solid none;
+		border-width: thin;
+}
+
+tr:nth-child(even) {
+    background-color: cyan;
+}
+
+.acct_row:hover {
+		background-color: lightskyblue;
+}
+
+.center_td {
+		text-align: center;
+}
+
+#oldaccts span,img {
+		cursor: pointer;
+}
+
+.tip {
+    position: relative;
+    display: inline-block;
+}
+
+.tip .tiptext {
+    visibility: hidden;
+    background-color: black;
+    color: #fff;
+    text-align: left;
+    border-radius: 4px;
+    padding: 2px;
+    
+    /* Position the tooltip */
+    position: absolute;
+    z-index: 1;
+    top: 100%;
+    left: 20%;
+}
+
+.tip:hover .tiptext {
+    visibility: visible;
+}

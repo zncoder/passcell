@@ -1,0 +1,30 @@
+{
+  "name": "PassCell",
+  "version": "1.22",
+  "manifest_version": 2,
+  "description": "Generate and manage passwords",
+  "icons": {
+    "48": "icons/48.png"
+  },
+	"permissions": [
+		"storage",
+		"activeTab",
+		"contextMenus"
+	],
+  "background": {
+    "scripts": [ "common.js", "background.js" ]
+  },
+	"content_scripts": [
+		{
+			"matches": ["http://*/*", "https://*/*", "file://*/*"],
+			"js": ["page-fillpw.js"],
+			"all_frames": true
+		}
+	],
+	"browser_action": {
+		"browser_style": true,
+		"default_popup": "popup.html",
+		"default_icon": "icons/32.png",
+		"default_title": "Manage password of this site"
+	}
+}

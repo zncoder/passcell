@@ -1,0 +1,394 @@
+let state; // forms, confirmed, notified
+
+const bgColor = "#FDFF47";
+const valueMark = "_value_set_by_furyomaiifndduzn_";
+
+chrome.runtime.onMessage.addListener(handleMessage);
+
+function handleMessage(req, sender, sendResponse) {
+	if (!initState()) {
+		//console.log("no form found");
+		return;
+	}
+	fillForm(req, sendResponse);
+}
+
+function fillForm(req, sendResponse) {
+	//console.log("req"); console.log(req);
+	if (req.name) {
+		for (let x of state.forms) {
+			if (x.name) {
+				x.name.value = req.name;
+				x.name.dispatchEvent(new Event("change"));
+			}
+		}
+	}
+
+	let pwset = [];
+	if (req.pw) {
+		for (let x of state.forms) {
+			for (let ar of [x.visible, x.invisible]) {
+				for (let y of ar) {
+					if (!y.value || y.classList.contains(valueMark)) {
+						y.value = req.pw;
+						y.dispatchEvent(new Event("change"));
+						y.classList.add(valueMark);
+						pwset.push([x.name, y]);
+					}
+				}
+			}
+		}
+	}
+	
+	switch (req.action) {
+	case "fill":
+		if (state.confirmed) {
+			submitForm(state.confirmed);
+		}
+		break;
+
+	case "new":
+		// capture submit
+		if (!state.notified) {
+			state.notified = true;
+			for (let i = 0; i < pwset.length; i++) {
+				let np = pwset[i];
+				let pw = np[1];
+				if (pw.form) {
+					pw.form.addEventListener("submit", () => notifyNewAccount(np));
+				}
+			}
+		}
+		// find name to send back
+		let nval = "";
+		for (let np of pwset) {
+			let name = np[0];
+			if (name && name.value) {
+				nval = name.value;
+				break;
+			}
+		}
+		//console.log("send back name"); console.log(nval);
+		sendResponse({name: nval});
+		break;
+	}
+}
+
+function submitForm(fm) {
+	let submit = fm.querySelector("input[type=submit]") || fm.querySelector("button[type=submit]");
+	if (submit) {
+		submit.click();
+	} else {
+		state.confirmed.submit();
+	}
+}
+
+function notifyNewAccount(np) {
+	let [name, pw] = np;
+	let msg = {
+		action: "new",
+		host: window.location.host,
+		pw: pw.value
+	};
+	if (name) {
+		msg.name = name.value;
+	}
+	//console.log("msg"); console.log(msg);
+	chrome.runtime.sendMessage(msg);
+}
+
+function initState() {
+	if (state) {
+		return state.forms.length > 0;
+	}
+
+	state = {forms: locateForms()};
+	if (state.forms.length == 0) {
+		return false;
+	}
+
+	// confirmed if there is only one visible form
+	let fm;
+	for (let x of state.forms) {
+		if (x.visible.length > 0) {
+			if (fm) {
+				fm = undefined;
+				break;
+			}
+			if (x.visible[0].form) {
+				fm = x.visible[0].form;
+			}
+		}
+	}
+	if (fm) {
+		state.confirmed = fm;
+	}
+	//console.log("state"); console.log(state);
+	return true;
+}
+
+// return [{name: name_field, visible: [visible_pw_field], invisible: [invisible_pw_field]}
+// each element is a form.
+// a form can contain 1 name field and 1 or more pw fields.
+function locateForms() {
+	let res = [];
+	// first locate pw and name fields in all forms
+	for (let el of document.querySelectorAll("form")) {
+		let fm = locateOneForm(el.querySelectorAll("input"));
+		if (fm) {
+			res.push(fm);
+		}
+	}
+
+	// then locate pw and name fields that are not in any form
+	let ins = [];
+	for (let x of document.querySelectorAll("input")) {
+		if (x.form) {
+			continue;
+		}
+		ins.push(x);
+	}
+	let fm = locateOneForm(ins);
+	if (fm) {
+		res.push(fm);			
+	}
+	return res;
+}
+
+function locateOneForm(ins) {
+	let fm = {visible: [], invisible: []};
+	for (let x of ins) {
+		if (x.type !== "password") {
+			continue;
+		}
+		if (visible(x)) {
+			fm.visible.push(x);
+		} else {
+			fm.invisible.push(x);
+		}
+	}
+
+	let pw;
+	if (fm.visible.length > 0) {
+		pw = fm.visible[0];
+	} else if (fm.invisible.length > 0) {
+		pw = fm.invisible[0];
+	} else {
+		return null;
+	}
+	// search backward from pw to find the name field
+	let i = ins.length - 1;
+	for (; i >= 0; i--) {
+		if (ins[i] === pw) {
+			break;
+		}
+	}
+	for (; i >= 0; i--) {
+		let x = ins[i];
+		if ((x.type === 'text' || x.type === 'email') && visible(x)) {
+			fm.name = x;
+			break;
+		}
+	}
+	return fm;
+}
+
+// https://stackoverflow.com/a/41698614
+function visible(el) {
+	if (el.style.display === 'none' ||
+			el.style.visibility === 'hidden' || el.style.visibility === 'collapse' ||
+			(el.style.opacity > 0 && el.style.opacity < 0.1) ||
+			el.offsetLeft < 0 ||
+			el.style.zIndex < 0) {
+		return false;
+	}
+
+	let rect = el.getBoundingClientRect();
+	if (el.offsetWidth + el.offsetHeight + rect.height + rect.width === 0) {
+    return false;
+  }
+	let cx = rect.left + el.offsetWidth / 2;
+	let cy = rect.top + el.offsetHeight / 2;
+	if (cx < 0 ||
+			cx > (document.documentElement.clientWidth || window.innerWidth) ||
+			cy < 0 ||
+			cy > (document.documentElement.clientHeight || window.innerHeight)) {
+		return false;
+	}
+	return true;
+}
+
+function showTip(s) {
+	let div = document.createElement("div");
+	div.innerText = s;
+	div.style.position = "absolute";
+	div.style.top = "0";
+	div.style.left = "50%";
+	div.style.zIndex = 1;
+	div.style.backgroundColor = bgColor;
+
+	document.body.appendChild(div);
+	return div;
+}
+
+function stopTip(tip) {
+	document.body.removeChild(tip);
+}
+
+//// dead code ////
+
+function locateNamePwFields() {
+	// find the pw field,
+	// - if only 1 visible pw field, use it
+	// - if multiple visible pw fields, start picker
+	// - first invisible pw field
+	//
+	// once pw field is found, locate the name field
+	return Promise.resolve(locatePwField())
+		.then(x => {
+			if (!x) {
+				return pickPw().then(pw => [pw, true]);
+			}
+			return x;
+		})
+		.then(x => {
+			let res = {pw: x[0], confirmed: x[1]};
+			let name = locateNameField(res.pw);
+			if (name) {
+				res.name = name;
+			}
+			return res;
+		});
+}
+
+// pickPw triggers picking pw field with mouse, and returns a Promise of the pw field
+function pickPw() {
+	return new Promise(resolve => {
+		let pk = newPicker(resolve);
+		pk.start();
+	})
+}
+
+function newPicker(resolve) {
+	let picker = {resolve: resolve};
+	// removeEventListener requires external function
+	picker.onMouseOver = ev => {
+		//console.log("over"); console.log(ev.target);
+		if (ev.target.type !== "password") {
+			return;
+		}
+		picker.bgColor = ev.target.style.backgroundColor;
+		//console.log("set bgcolor to"); console.log(picker.bgColor);
+		ev.target.style.backgroundColor = bgColor;
+	};
+	
+	picker.onMouseOut = ev => {
+		//console.log("out"); console.log(ev.target);
+		if (ev.target.type !== "password") {
+			return;
+		}
+		if (picker.bgColor !== undefined) {
+			//console.log("reset color");
+			ev.target.style.backgroundColor = picker.bgColor;
+			picker.bgColor = undefined;
+		}
+	};
+	
+	picker.onClick = ev => {
+		//console.log("click");
+		// stop picker on any click event
+		picker.onMouseOut(ev);
+		picker.stop();
+		
+		// left click only
+		if (ev.button != 0) {
+			picker.resolve(null);
+		}
+
+		let pw = ev.target;
+		if (pw.type !== "password") {
+			console.log("ignore non-password:"); console.log(pw);
+			picker.resolve(null);
+			return;
+		}
+		//console.log("pw"); console.log(pw);
+		picker.resolve(pw);
+	};
+	
+	picker.start = () => {
+		//console.log("start picker");
+		picker.tip = showTip("Please click to select the password field");
+		// TODO: highlight all pw fields?
+		document.body.style.cursor = "grab";
+		document.addEventListener("mouseover", picker.onMouseOver);
+		document.addEventListener("mouseout", picker.onMouseOut);
+		document.addEventListener("click", picker.onClick);
+	};
+	
+	picker.stop = () => {
+		//console.log("stop picker");
+		stopTip(picker.tip);
+		document.body.style.cursor = "initial";
+		document.removeEventListener("mouseover", picker.onMouseOver);
+		document.removeEventListener("mouseout", picker.onMouseOut);
+		document.removeEventListener("click", picker.onClick);
+	};
+
+	return picker;
+}
+
+function locateNameField(pw) {
+	// search backward from pw to find the name field
+	let ins = pw.form.getElementsByTagName("input");
+	let i = 0;
+	for (; i < ins.length; i++) {
+		if (ins[i] === pw) {
+			break;
+		}
+	}
+	if (i === ins.length) {
+		return null;
+	}
+	for (; i >= 0; i--) {
+		let x = ins[i];
+		if ((x.type === 'text' || x.type === 'email') && visible(x)) {
+			return x;
+		}
+	}
+	return null
+}
+
+function queryPwAll() {
+	let pws = [];
+	let ins = document.querySelectorAll("input");
+	for (let x of ins) {
+		if (x.type === "password") {
+			pws.push(x);
+		}
+	}
+	return pws;
+}
+
+// return [pw, confirmed] or null
+function locatePwField() {
+	let pwinv, pw;
+	let pwall = queryPwAll();
+	for (let x of pwall) {
+		if (visible(x)) {
+			if (pw) {
+				console.log("multiple visible passwords");
+				return null;
+			}
+			pw = x;
+		} else if (!pwinv) {
+			pwinv = x;
+		}
+	}
+	if (pw) {
+		return [pw, true];
+	}
+	if (pwinv) {
+		return [pwinv, false];
+	}
+	return null;
+}

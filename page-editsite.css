@@ -1,0 +1,22 @@
+body, input {
+		font-family: sans-serif;
+		font-size: 1.1em;
+}
+
+#save {
+		position: fixed;
+    top: 1em;
+    right: 1em; 
+}
+
+#sites-tb {
+		width: 90%;
+}
+
+th {
+		text-align: left;
+}
+
+tr:nth-child(even) {
+		background-color: cyan;
+}

@@ -1,0 +1,74 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="utf-8">
+		<link rel="stylesheet" type="text/css" href="popup.css">
+  </head>
+
+<body>
+	<div class="page row" id="choose_sec">
+		<input type="button" id="do_signup_btn" value="Sign Up" class="btn row_cell">
+		<input type="button" id="do_login_btn" value="Log In" class="btn row_cell">
+	</div>
+
+	<div class="page" id="signup_sec">
+		<form id="signup_form">
+			<div class="login_grid">
+				<label for="signup_email">Email&nbsp;</label><input type="email" id="signup_email">
+				<label for="signup_pw">Master&nbsp;Password&nbsp;</label><input type="password" id="signup_pw">
+				<label for="signup_pw_m">Confirm&nbsp;Password&nbsp;</label><input type="password" id="signup_pw_m">
+			</div>
+			<div class="row">
+				<input type="submit" id="signup_btn" value="Sign Up" class="btn row_cell">
+			</div>
+		</form>
+	</div>
+
+	<div class="page" id="login_sec">
+		<form id="login_form">
+			<div class="login_grid">
+				<label for="login_email">Email&nbsp;</label><input type="email" id="login_email">
+				<label for="login_pw">Master&nbsp;Password&nbsp;</label><input type="password" id="login_pw">
+			</div>
+			<div class="row">
+				<input type="submit" id="login_btn" value="Log In" class="btn row_cell">
+			</div>
+		</form>
+	</div>
+
+	<div class="page" id="site_sec">
+		<div id="oldaccts_sec">
+			<table id="oldaccts">
+				<tr><th>Username</th><th>Password</th></tr>
+			</table>
+		</div>
+
+		<div id="shownewacct_sec">
+			<div class="row">
+				<input type="button" value="New Account" id="shownewacct_acct" class="btn row_cell">
+			</div>
+		</div>
+		<div id="newacctdetail_sec">
+			<form id="newacct_form">
+				<fieldset>
+					<legend id="newacct_h">New Account</legend>
+					<div class="login_grid">
+						<label for="newacct_name">Username </label>
+						<input type="text" id="newacct_name" autocomplete="off">
+						<label for="newacct_pw">Password </label>
+						<input type="text" id="newacct_pw" size="32">
+					</div>
+					<div class="row">
+						<input type="button" value="Generate" id="newacct_new" class="btn row_cell">
+						<input type="button" value="Length" id="newacct_resize" class="btn row_cell">
+						<input type="submit" value="Save" class="btn row_cell">
+					</div>
+				</fieldset>
+			</form>
+		</div>
+	</div>
+
+	<script src="common.js"></script>
+	<script src="popup.js"></script>
+</body>
+</html>
