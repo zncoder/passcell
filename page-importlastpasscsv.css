@@ -1,0 +1,10 @@
+#sites-ta {
+		width: 90vw;
+		height: 95vh;
+}
+
+#import {
+		position: fixed;
+    top: 1em;
+    right: 1em; 
+}

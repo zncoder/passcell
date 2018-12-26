@@ -433,12 +433,12 @@ function hostDomain(host) {
 }
 
 function resetSites(sts) {
-	console.log("resetsites");
+	console.log("resetsites"); console.log(sts);
 	// make a copy of sites to avoid dead object
 	ss = [];
 	for (let i = 0; i < sts.length; i++) {
-		let x = sts[i];
-		ss.push([x[0], x[1], x[2]]);
+		let [h, n, p] = sts[i];
+		ss.push([h, n, p]);
 	}
 	state.sites = ss;
 	return pushState()
@@ -446,19 +446,20 @@ function resetSites(sts) {
 }
 
 function startImportSites() {
-	chrome.tabs.executeScript({file: 'page-importpw.js'});
+	chrome.tabs.executeScript({file: "page-importpw.js"});
+}
+
+function importSites(ss) {
+	//console.log("importsites"); console.log(ss);
+	for (let x of ss) {
+		let [h, n, p] = x;
+		addAccount(h, n, p);
+	}
+	return pushState();
 }
 
 function handleImportSites(ss, sendResponse) {
-	//console.log(ss);
-	for (let x of ss) {
-		let host = x[0];
-		let name = x[1];
-		let pw = x[2];
-		addAccount(host, name, pw);
-	}
-
-	return pushState()
+	return importSites(ss)
 		.then(() => sendResponse({response: "sites imported"}))
 		.catch(e => { console.log("handleimportsites err"); console.log(e); });
 }
@@ -496,6 +497,11 @@ function enableContextMenu() {
 		contexts: ["browser_action"]
 	});
 	chrome.contextMenus.create({
+		id: "import-lastpass-csv",
+		title: "Import LastPass Exported CSV",
+		contexts: ["browser_action"]
+	});
+	chrome.contextMenus.create({
 		id: "edit-sites",
 		title: "Edit Sites",
 		contexts: ["browser_action"]
@@ -509,6 +515,9 @@ function enableContextMenu() {
 		switch (info.menuItemId) {
 		case "import-sites":
 			startImportSites();
+			break;
+		case "import-lastpass-csv":
+			chrome.tabs.create({"url": "/page-importlastpasscsv.html"});
 			break;
 		case "edit-sites":
 			chrome.tabs.create({"url": "/page-editsite.html"});
