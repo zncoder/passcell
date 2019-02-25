@@ -1,7 +1,7 @@
 // TODO: 
+// - concurrency control: last login kicks out other logins
 // - offline mode should work, as long as local state is restored
 //    - the promise saved by logIn blocks popup
-// - merge versions
 // - notes
 
 // notes:

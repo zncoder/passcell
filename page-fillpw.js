@@ -17,9 +17,8 @@ function fillForm(req, sendResponse) {
 	//console.log("req"); console.log(req);
 	if (req.name) {
 		for (let x of state.forms) {
-			if (x.name) {
-				x.name.value = req.name;
-				x.name.dispatchEvent(new Event("change"));
+			for (let y of x.name) {
+				setFieldValue(y, req.name);
 			}
 		}
 	}
@@ -29,26 +28,26 @@ function fillForm(req, sendResponse) {
 		for (let x of state.forms) {
 			for (let ar of [x.visible, x.invisible]) {
 				for (let y of ar) {
-					if (!y.value || y.classList.contains(valueMark)) {
-						y.value = req.pw;
-						y.dispatchEvent(new Event("change"));
-						y.classList.add(valueMark);
-						pwset.push([x.name, y]);
+					if (setFieldValue(y, req.pw)) {
+						let name = getNameValue(x.name);
+						pwset.push([name, y]);
 					}
 				}
 			}
 		}
 	}
-	
+
+	// no action means fill the form only
 	switch (req.action) {
 	case "fill":
+		// fill and then submit form
 		if (state.confirmed) {
 			submitForm(state.confirmed);
 		}
 		break;
 
 	case "new":
-		// capture submit
+		// new account, capture submit
 		if (!state.notified) {
 			state.notified = true;
 			for (let i = 0; i < pwset.length; i++) {
@@ -62,9 +61,8 @@ function fillForm(req, sendResponse) {
 		// find name to send back
 		let nval = "";
 		for (let np of pwset) {
-			let name = np[0];
-			if (name && name.value) {
-				nval = name.value;
+			if (np[0] !== "") {
+				nval = np[0];
 				break;
 			}
 		}
@@ -72,6 +70,26 @@ function fillForm(req, sendResponse) {
 		sendResponse({name: nval});
 		break;
 	}
+}
+
+function setFieldValue(field, value) {
+	if (!field.value || field.value === "" || field.classList.contains(valueMark)) {
+		field.value = value;
+		field.dispatchEvent(new Event("input", {"bubbles": true, "cancelable": true}));
+		field.dispatchEvent(new Event("change"));
+		field.classList.add(valueMark);
+		return true;
+	}
+	return false;
+}
+
+function getNameValue(fields) {
+	for (let x of fields) {
+		if (x.value && x.value !== "" && !x.classList.contains(valueMark)) {
+			return x.value;
+		}
+	}
+	return "";
 }
 
 function submitForm(fm) {
@@ -88,11 +106,9 @@ function notifyNewAccount(np) {
 	let msg = {
 		action: "new",
 		host: window.location.host,
+		name: name,
 		pw: pw.value
 	};
-	if (name) {
-		msg.name = name.value;
-	}
 	//console.log("msg"); console.log(msg);
 	chrome.runtime.sendMessage(msg);
 }
@@ -127,20 +143,23 @@ function initState() {
 	return true;
 }
 
-// return [{name: name_field, visible: [visible_pw_field], invisible: [invisible_pw_field]}
+// Locate forms that contain pw. If no form with pw is found, return
+// forms with text or email fields.
+//
+// return [{name: [name_field], visible: [visible_pw_field], invisible: [invisible_pw_field]}
 // each element is a form.
-// a form can contain 1 name field and 1 or more pw fields.
+// a form can contain 1 or more name field and 1 or more pw fields.
+// name field is text or email input; pw is password input.
 function locateForms() {
 	let res = [];
+	let textonly = [];
 	// first locate pw and name fields in all forms
 	for (let el of document.querySelectorAll("form")) {
 		let fm = locateOneForm(el.querySelectorAll("input"));
-		if (fm) {
-			res.push(fm);
-		}
+		sortForms(res, textonly, fm);
 	}
 
-	// then locate pw and name fields that are not in any form
+	// then locate pw and name fields that are not in any form, and put them in one form
 	let ins = [];
 	for (let x of document.querySelectorAll("input")) {
 		if (x.form) {
@@ -148,46 +167,39 @@ function locateForms() {
 		}
 		ins.push(x);
 	}
-	let fm = locateOneForm(ins);
-	if (fm) {
-		res.push(fm);			
+	if (ins.length > 0) {
+		let fm = locateOneForm(ins);
+		sortForms(res, textonly, fm);
 	}
-	return res;
+
+	if (res.length > 0) {
+		return res;
+	}
+	return textonly;
+}
+
+function sortForms(withpw, textonly, fm) {
+	if (!fm) {
+		return;
+	}
+	if (fm.visible.length > 0 || fm.invisible.length > 0) {
+		withpw.push(fm);
+	} else {
+		textonly.push(fm);
+	}
 }
 
 function locateOneForm(ins) {
-	let fm = {visible: [], invisible: []};
+	let fm = {name: [], visible: [], invisible: []};
 	for (let x of ins) {
-		if (x.type !== "password") {
-			continue;
-		}
-		if (visible(x)) {
-			fm.visible.push(x);
-		} else {
-			fm.invisible.push(x);
-		}
-	}
-
-	let pw;
-	if (fm.visible.length > 0) {
-		pw = fm.visible[0];
-	} else if (fm.invisible.length > 0) {
-		pw = fm.invisible[0];
-	} else {
-		return null;
-	}
-	// search backward from pw to find the name field
-	let i = ins.length - 1;
-	for (; i >= 0; i--) {
-		if (ins[i] === pw) {
-			break;
-		}
-	}
-	for (; i >= 0; i--) {
-		let x = ins[i];
-		if ((x.type === 'text' || x.type === 'email') && visible(x)) {
-			fm.name = x;
-			break;
+		if (x.type === "password") {
+			if (visible(x)) {
+				fm.visible.push(x);
+			} else {
+				fm.invisible.push(x);
+			}
+		} else if (x.type === "text" || x.type === "email") {
+			fm.name.push(x);
 		}
 	}
 	return fm;
