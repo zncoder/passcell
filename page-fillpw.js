@@ -1,19 +1,18 @@
-let state; // forms, confirmed, notified
-
 const bgColor = "#FDFF47";
 const valueMark = "_value_set_by_furyomaiifndduzn_";
 
 chrome.runtime.onMessage.addListener(handleMessage);
 
 function handleMessage(req, sender, sendResponse) {
-	if (!initState()) {
+	let state = initState();
+	if (state.forms.length === 0) {
 		//console.log("no form found");
 		return;
 	}
-	fillForm(req, sendResponse);
+	fillForm(state, req, sendResponse);
 }
 
-function fillForm(req, sendResponse) {
+function fillForm(state, req, sendResponse) {
 	//console.log("req"); console.log(req);
 	if (req.name) {
 		for (let x of state.forms) {
@@ -42,7 +41,7 @@ function fillForm(req, sendResponse) {
 	case "fill":
 		// fill and then submit form
 		if (state.confirmed) {
-			submitForm(state.confirmed);
+			submitForm(state);
 		}
 		break;
 
@@ -92,12 +91,13 @@ function getNameValue(fields) {
 	return "";
 }
 
-function submitForm(fm) {
+function submitForm(state) {
+	let fm = state.confirmed;
 	let submit = fm.querySelector("input[type=submit]") || fm.querySelector("button[type=submit]");
 	if (submit) {
 		submit.click();
 	} else {
-		state.confirmed.submit();
+		fm.submit();
 	}
 }
 
@@ -114,14 +114,7 @@ function notifyNewAccount(np) {
 }
 
 function initState() {
-	if (state) {
-		return state.forms.length > 0;
-	}
-
-	state = {forms: locateForms()};
-	if (state.forms.length == 0) {
-		return false;
-	}
+	let state = {forms: locateForms()};
 
 	// confirmed if there is only one visible form
 	let fm;
@@ -136,11 +129,9 @@ function initState() {
 			}
 		}
 	}
-	if (fm) {
-		state.confirmed = fm;
-	}
+	state.confirmed = fm;
 	//console.log("state"); console.log(state);
-	return true;
+	return state;
 }
 
 // Locate forms that contain pw. If no form with pw is found, return
