@@ -3,6 +3,8 @@
 // - offline mode should work, as long as local state is restored
 //    - the promise saved by logIn blocks popup
 // - notes
+// - intercept submit event in login to avoid page reload
+// - sort accounts by most recent use time
 
 // notes:
 //

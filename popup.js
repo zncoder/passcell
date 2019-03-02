@@ -3,6 +3,8 @@ let bg = null;
 let pwLen = 32; // 8,16,24,32
 let pwMode = 0;
 
+let autofillBlacklist = new Set([]);
+
 getBackgroundPage()
 	.then(x => {
 		bg = x;
@@ -150,6 +152,8 @@ function hydrateOldAccounts(host, tb) {
 		return 1;
 	});
 
+	let nofill = autofillBlacklist.has(host);
+
 	for (let i = 0; i < accts.length; i++) {
 		let x = accts[i];
 		//console.log(x);
@@ -166,7 +170,7 @@ function hydrateOldAccounts(host, tb) {
 		docId(nameid).addEventListener("click", () => copyName(nameid));
 		let pwid = "pw_"+i;
 		docId("pwimg_"+i).addEventListener("click", () => copyPassword(pwid));
-		docId("fillimg_"+i).addEventListener("click", ev => fillPassword(""+i, ev.ctrlKey));
+		docId("fillimg_"+i).addEventListener("click", ev => fillPassword(""+i, nofill || ev.ctrlKey));
 	}
 	return true;
 }
@@ -181,12 +185,12 @@ function copyPassword(id) {
 	clip(el.value);
 }
 
-function fillPassword(i, fill) {
+function fillPassword(i, nofill) {
 	let name = docId("name_"+i).innerText;
 	let pw = docId("pw_"+i).value;
 	chrome.tabs.query({active: true, currentWindow: true}, ts => {
 		let msg = {name: name, pw: pw};
-		if (fill) {
+		if (!nofill) {
 			msg.action = "fill";
 		}
 		chrome.tabs.sendMessage(ts[0].id, msg, () => window.close());
