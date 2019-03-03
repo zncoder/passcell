@@ -8,21 +8,20 @@ let autofillBlacklist = new Set([])
 getBackgroundPage()
 	.then(x => {
 		bg = x
-		// wait for background tasks to finish
-		bg.ready().then(() => openPopup())
+		loadPage()
 	})
 	.catch(e => { console.log("popup err"); console.log(e); })
 
-function openPopup() {
+function loadPage() {
 	//console.log("openpopup")
-	hidePages()
+	hide(".page")
 
 	// already logged in
 	if (bg.loggedIn()) {
-		show("site_sec")
-		hide("oldaccts_sec")
-		show("shownewacct_sec")
-		hide("newacctdetail_sec")
+		show("#site_sec")
+		hide("#oldaccts_sec")
+		show("#shownewacct_sec")
+		hide("#newacctdetail_sec")
 		docId("shownewacct_acct").addEventListener("click", showNewAccount)
 		chrome.tabs.query({active: true, currentWindow: true}, ts => {
 			hydrateSitePage(tidyUrl(ts[0].url))
@@ -37,21 +36,21 @@ function openPopup() {
 	}
 
 	// choose signup or login
-	show("choose_sec")
+	show("#choose_sec")
 	docId("do_signup_btn").addEventListener("click", showSignUp)
 	docId("do_login_btn").addEventListener("click", showLogIn)
 }
 
 function showSignUp() {
-	hidePages()
-	show("signup_sec")
+	hide(".page")
+	show("#signup_sec")
 	docId("signup_form").addEventListener("submit", signUp)
 	docId("signup_email").focus()
 }
 
 function showLogIn() {
-	hidePages()
-	show("login_sec")
+	hide(".page")
+	show("#login_sec")
 
 	let email = bg.getEmail()
 	if (!empty(email)) {
@@ -68,20 +67,14 @@ function showLogIn() {
 }
 
 function showNewAccount() {
-	hide("shownewacct_sec")
-	show("newacctdetail_sec")
-}
-
-function hidePages() {
-	for (let x of document.getElementsByClassName("page")) {
-		x.style.display = "none"
-	}
+	hide("#shownewacct_sec")
+	show("#newacctdetail_sec")
 }
 
 function hydrateSitePage(site) {
 	let host = site[1]
 	if (hydrateOldAccounts(host, docId("oldaccts"))) {
-		show("oldaccts_sec")
+		show("#oldaccts_sec")
 	}
 
 	let lastPw = bg.getLastPw(host)
@@ -90,7 +83,7 @@ function hydrateSitePage(site) {
 		docId("newacct_pw").value = lastPw[2]
 		showNewAccount()
 	}
-	docId("newacct_form").addEventListener("submit", () => saveAccount(host))
+	docId("newacct_form").addEventListener("submit", ev => saveAccount(ev, host))
 	docId("newacct_new").addEventListener("click", () => newAcctNew(host))
 	docId("newacct_resize").addEventListener("click", () => newAcctResize(host))
 }
@@ -197,7 +190,8 @@ function fillPassword(i, nofill) {
 	})
 }
 
-function signUp() {
+function signUp(ev) {
+	ev.preventDefault()
 	let email = docId("signup_email").value
 	let pw = docId("signup_pw").value
 	if (empty(email) || empty(pw) || docId("signup_pw_m").value !== pw) {
@@ -205,26 +199,24 @@ function signUp() {
 		return
 	}
 	
-	let p = bg.signUp(email, pw)
-			.catch(e => {console.log("signup err"); console.log(e);})
-	// save this promise in background. we need to wait for it to finish
-	// before we can open popup.
-	bg.savePromise(p)
+	bg.signUp(email, pw)
+		.then(() => loadPage())
 }
 
-function logIn() {
+function logIn(ev) {
+	ev.preventDefault()
 	let pw = docId("login_pw").value
 	if (empty(pw)) {
 		console.log("empty pw")
 		return
 	}
 
-	let p = bg.logIn(pw)
-			.catch(e => {console.log("login err"); console.log(e);})
-	bg.savePromise(p)
+	bg.logIn(pw)
+		.then(() => loadPage())
 }
 
-function recoverLogIn() {
+function recoverLogIn(ev) {
+	ev.preventDefault()
 	let email = docId("login_email").value
 	let pw = docId("login_pw").value
 	if (empty(email) || empty(pw)) {
@@ -232,12 +224,12 @@ function recoverLogIn() {
 		return
 	}
 
-	let p = bg.recoverLogIn(email, pw)
-			.catch(e => {console.log("recoverlogin err"); console.log(e);})
-	bg.savePromise(p)
+	bg.recoverLogIn(email, pw)
+		.then(() => loadPage())
 }
 
-function saveAccount(host) {
+function saveAccount(ev, host) {
+	ev.preventDefault()
 	let name = docId("newacct_name").value
 	let pw = docId("newacct_pw").value
 	bg.addAccount(host, name, pw)

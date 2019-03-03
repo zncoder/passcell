@@ -1,11 +1,11 @@
 let bg
+let lastIndex = 0
+
 getBackgroundPage()
 	.then(x => {
 		bg = x
-		bg.ready().then(() => hydrateSites())
+		hydrateSites()
 	})
-
-let lastIndex = 0
 
 const acctTmpl = '<td><span id="host-{id}">{host}</span></td>\n\
 <td><span id="name-{id}">{name}</span></td>\n\

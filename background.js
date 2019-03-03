@@ -29,7 +29,8 @@
 // errors in the page that are triggered by sendMessage are populated back to caller
 // content_scripts is injected to every iframe and runs independently, when all_frames is true
 
-let localBackend = false && "http://localhost:10008"
+const localBackend = "http://localhost:10008"
+const prodBackend = "https://54.67.41.163.sslip.io:10008"
 
 let state = {
 	// masterKey is initialized from pw during signup or login.
@@ -38,7 +39,7 @@ let state = {
 	// token is from server after successful signup or login
 	token: "",
 	stopWatch: false,
-	backend: "https://54.67.41.163.sslip.io:10008",
+	backend: prodBackend,
 	// tokener refreshes access token
 	tokener: null,
 	// last pw that is not saved, [host, name, pw]
@@ -106,24 +107,10 @@ function loadPlaintextState() {
 				state.version = x.version
 			}
 		})
-		.then(() => new Promise(resolve => chrome.management.getSelf(ei => resolve(ei))))
-		.then(ei => {
-			if (ei.installType === "development" && localBackend) {
-				state.backend = localBackend
-			}
-		})
 		.catch(e => { console.log("loadplaintextstate err"); console.log(e); })
 }
 
-let promise = loadPlaintextState()
-
-function savePromise(p) {
-	promise = promise.then(() => p)
-}
-
-function ready() {
-	return promise
-}
+loadPlaintextState()						// no need to wait for it to finish?
 
 function signUp(em, pw) {
 	// sign up,

@@ -1,9 +1,7 @@
 getBackgroundPage()
 	.then(bg => {
-		bg.ready().then(() => {
-			let sites = bg.getSites()
-			hydrateSites(sites)
-		})
+		let sites = bg.getSites()
+		hydrateSites(sites)
 	})
 
 const siteTmpl = '<td>{host}</td><td>{name}</td><td>{pw}</td>'

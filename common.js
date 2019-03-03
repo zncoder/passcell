@@ -153,12 +153,16 @@ function docId(x) {
 	return document.getElementById(x)
 }
 
-function show(id) {
-	docId(id).style.display = "block"
+function show(sel) {
+	for (let el of document.querySelectorAll(sel)) {
+		el.style.display = "block"
+	}
 }
 
-function hide(id) {
-	docId(id).style.display = "none"
+function hide(sel) {
+	for (let el of document.querySelectorAll(sel)) {
+		el.style.display = "none"
+	}
 }
 
 function xhr(url, obj, to) {

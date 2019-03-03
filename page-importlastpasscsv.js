@@ -2,9 +2,8 @@ let bg
 getBackgroundPage()
 	.then(x => {
 		bg = x
-		bg.ready()
+		docId("import").addEventListener("click", importLastPassCsv)
 	})
-	.then(() => docId("import").addEventListener("click", importLastPassCsv))
 
 function importLastPassCsv() {
 	let sites = []
