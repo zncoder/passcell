@@ -3,7 +3,6 @@
 // - offline mode should work, as long as local state is restored
 //    - the promise saved by logIn blocks popup
 // - notes
-// - intercept submit event in login to avoid page reload
 // - sort accounts by most recent use time
 
 // notes:
@@ -31,6 +30,7 @@
 
 const localBackend = "http://localhost:10008"
 const prodBackend = "https://54.67.41.163.sslip.io:10008"
+const postTimeout = 10000 // 10s
 
 let state = {
 	// masterKey is initialized from pw during signup or login.
@@ -155,7 +155,7 @@ function signUpRemote(url, pw, em, salt) {
 				mastersalt: bytes2hex(salt),
 				cred: cred
 			}
-			return xhr(url+"/signup", v)
+			return post(url+"/signup", v, postTimeout)
 		})
 		.then(res => {
 			// console.log("signup res:"); console.log(res)
@@ -188,7 +188,7 @@ function newTokener(url, em, pw, salt) {
 				cred: cred
 			}
 			return () => {
-				return xhr(url+"/login", arg)
+				return post(url+"/login", arg, postTimeout)
 					.then(res => {
 						console.log("got token"); console.log(res.token)
 						return res.token
@@ -234,7 +234,7 @@ function recoverLogIn(em, pw) {
 
 function preLogInRemote(url, em) {
 	let arg = {email: em}
-	return xhr(url+"/prelogin", arg)
+	return post(url+"/prelogin", arg, postTimeout)
 		.then(res => {
 			return hex2bytes(res.mastersalt)
 		})
@@ -319,14 +319,14 @@ function fetchRemote(url, k, tk, ver, poll, ms) {
 
 	let to
 	if (wait) {
-		to = 0
+		to = 3600*1000
 	}
 
 	if (ms === undefined) {
 		ms = 0
 	}
 
-	return xhr(url+"/get", arg, to)
+	return post(url+"/get", arg, to)
 		.then(res => {
 			//console.log("fetchremote res"); console.log(res)
 			let x = JSON.parse(res.value)
@@ -369,7 +369,7 @@ function pushRemote(url, tk, ver, ct, ms) {
 		ms = 0
 	}
 	
-	return xhr(url+"/put", arg, 10000)
+	return post(url+"/put", arg, postTimeout)
 		.then(res => {
 			console.log("uploaded version:"+res.version)
 			return res.version

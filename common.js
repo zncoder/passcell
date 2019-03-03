@@ -165,48 +165,23 @@ function hide(sel) {
 	}
 }
 
-function xhr(url, obj, to) {
-	return new Promise((resolve, reject) => {
-		let req = new XMLHttpRequest()
-		if (obj) {
-			req.open("POST", url, true)
-			req.setRequestHeader("Content-Type", "application/json")
-		} else {
-			req.open("GET", url, true)
-		}
-
-		if (to === undefined) {
-			req.timeout =  5000
-		} else {
-			req.timeout = to
-		}
-
-		req.onload = () => {
-			//console.log("xhr done:"+req.status)
-			if (req.status !== 200) {
-				reject(Error(req.statusText))
-				return
-			}
-
-			let res = JSON.parse(req.response)
-			//console.log(res)
-			resolve(res)
-		}
-		
-		req.onerror = e => {
-			reject(Error("xhr network error"))
-		}
-
-		req.ontimeout = e => {
-			reject(Error("xhr timeout"))
-		}
-
-		if (obj) {
-			req.send(JSON.stringify(obj))
-		} else {
-			req.send()
-		}
-	})
+function post(url, obj, timeout) {
+	let ac = new AbortController()
+	let arg = {
+		method: "POST",
+		cache: "no-cache",
+		headers: {"Content-Type": "application/json"},
+		body: JSON.stringify(obj),
+		signal: ac.signal,
+	}
+	let timeoutId = setTimeout(() => ac.abort(), timeout)
+	
+	return fetch(url, arg)
+		.then(resp => resp.json())
+		.then(json => {
+			clearTimeout(timeoutId)
+			return json
+		})
 }
 
 // exponential backoff, return new backoff upper bound
