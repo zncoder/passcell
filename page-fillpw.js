@@ -189,7 +189,7 @@ function locateOneForm(ins) {
 			} else {
 				fm.invisible.push(x)
 			}
-		} else if (x.type === "text" || x.type === "email") {
+		} else if ((x.type === "text" || x.type === "email") && visible(x)) {
 			fm.name.push(x)
 		}
 	}
