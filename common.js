@@ -52,7 +52,7 @@ function b2s(b) {
 function seal(key, b) {
 	let iv = nonce(12)
 	return crypto.subtle.encrypt({name: "AES-GCM", iv: iv}, key, b)
-		.then(b => {ct: bytes2hex(b), iv: bytes2hex(iv)})
+		.then(c => {return {ct: bytes2hex(c), iv: bytes2hex(iv)}})
 }
 
 function unseal(key, x) {
