@@ -3,7 +3,9 @@ let bg = null
 let pwLen = 32 // 8,16,24,32
 let pwMode = 0
 
-let autofillBlacklist = new Set([])
+let autofillBlacklist = new Set([
+	"login.fidelity.com",
+])
 
 getBackgroundPage()
 	.then(x => {
