@@ -3,8 +3,13 @@ let bg = null
 let pwLen = 32 // 8,16,24,32
 let pwMode = 0
 
-let autofillBlacklist = new Set([
+let autoSubmitBlacklist = new Set([
 	"login.fidelity.com",
+	"online.citi.com",
+])
+
+let hiddenWhitelist = new Set([
+	"online.citi.com",
 ])
 
 getBackgroundPage()
@@ -147,7 +152,8 @@ function hydrateOldAccounts(host, tb) {
 		return 1
 	})
 
-	let nofill = autofillBlacklist.has(host)
+	let noSubmit = autoSubmitBlacklist.has(host)
+	let setHidden = hiddenWhitelist.has(host)
 
 	for (let i = 0; i < accts.length; i++) {
 		let x = accts[i]
@@ -165,7 +171,7 @@ function hydrateOldAccounts(host, tb) {
 		docId(nameid).addEventListener("click", () => copyName(nameid))
 		let pwid = "pw_"+i
 		docId("pwimg_"+i).addEventListener("click", () => copyPassword(pwid))
-		docId("fillimg_"+i).addEventListener("click", ev => fillPassword(""+i, nofill || ev.ctrlKey))
+		docId("fillimg_"+i).addEventListener("click", ev => fillPassword(""+i, noSubmit || ev.ctrlKey, setHidden))
 	}
 	return true
 }
@@ -180,13 +186,16 @@ function copyPassword(id) {
 	clip(el.value)
 }
 
-function fillPassword(i, nofill) {
+function fillPassword(i, noSubmit, setHidden) {
 	let name = docId("name_"+i).innerText
 	let pw = docId("pw_"+i).value
 	chrome.tabs.query({active: true, currentWindow: true}, ts => {
 		let msg = {name: name, pw: pw}
-		if (!nofill) {
-			msg.action = "fill"
+		if (!noSubmit) {
+			msg.action = "submit"
+		}
+		if (setHidden) {
+			msg.hidden = true
 		}
 		chrome.tabs.sendMessage(ts[0].id, msg, () => window.close())
 	})

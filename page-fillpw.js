@@ -19,6 +19,11 @@ function fillForm(state, req, sendResponse) {
 			for (let y of x.name) {
 				setFieldValue(y, req.name)
 			}
+			if (req.hidden) {
+				for (let y of x.hidden) {
+					setFieldValue(y, req.name)
+				}
+			}
 		}
 	}
 
@@ -38,7 +43,7 @@ function fillForm(state, req, sendResponse) {
 
 	// no action means fill the form only
 	switch (req.action) {
-	case "fill":
+	case "submit":
 		// fill and then submit form
 		if (state.confirmed) {
 			submitForm(state)
@@ -137,7 +142,7 @@ function initState() {
 // Locate forms that contain pw. If no form with pw is found, return
 // forms with text or email fields.
 //
-// return [{name: [name_field], visible: [visible_pw_field], invisible: [invisible_pw_field]}
+// return [{name: [name_field], hidden: [name_field], visible: [visible_pw_field], invisible: [invisible_pw_field]}
 // each element is a form.
 // a form can contain 1 or more name field and 1 or more pw fields.
 // name field is text or email input; pw is password input.
@@ -181,7 +186,7 @@ function sortForms(withpw, textonly, fm) {
 }
 
 function locateOneForm(ins) {
-	let fm = {name: [], visible: [], invisible: []}
+	let fm = {name: [], hidden: [], visible: [], invisible: []}
 	for (let x of ins) {
 		if (x.type === "password") {
 			if (visible(x)) {
@@ -189,8 +194,12 @@ function locateOneForm(ins) {
 			} else {
 				fm.invisible.push(x)
 			}
-		} else if ((x.type === "text" || x.type === "email") && visible(x)) {
-			fm.name.push(x)
+		} else if ((x.type === "text" || x.type === "email")) {
+			if (visible(x)) {
+				fm.name.push(x)
+			} else {
+				fm.hidden.push(x)
+			}
 		}
 	}
 	return fm
