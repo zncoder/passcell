@@ -30,9 +30,7 @@ function loadPage() {
 		show("#shownewacct_sec")
 		hide("#newacctdetail_sec")
 		docId("shownewacct_acct").addEventListener("click", showNewAccount)
-		chrome.tabs.query({active: true, currentWindow: true}, ts => {
-			hydrateSitePage(tidyUrl(ts[0].url))
-		})
+		currentTab().then(tab => hydrateSitePage(tidyUrl(tab.url)))
 		return
 	}
 
@@ -94,18 +92,19 @@ function hydrateSitePage(site) {
 		docId("newacct_host").value = host
 	}
 	
-	docId("newacct_form").addEventListener("submit", ev => saveAccount(ev))
-	docId("newacct_new").addEventListener("click", () => newAcctNew())
-	docId("newacct_resize").addEventListener("click", () => newAcctResize())
-	docId("newacct_clear").addEventListener("click", () => clearAccount())
+	docId("newacct_form").addEventListener("submit", saveAccount)
+	docId("newacct_new").addEventListener("click", newAcctNew)
+	docId("newacct_resize").addEventListener("click", newAcctResize)
+	docId("newacct_reset").addEventListener("click", () => resetAccount(host))
+	docId("newacct_name").addEventListener("input", fillUsername)
 }
 
 function newAcctPw() {
 	let pw = generatePw(pwMode, pwLen)
 	docId("newacct_pw").value = pw
 	bg.setLastPw(docId("newacct_host").value, docId("newacct_name").value, pw)
-	chrome.tabs.query({active: true, currentWindow: true}, ts => {
-		chrome.tabs.sendMessage(ts[0].id, {pw: pw, action: "new"}, resp => {
+	currentTab().then(tab => {
+		chrome.tabs.sendMessage(tab.id, {pw: pw, action: "new"}, resp => {
 			//console.log("new resp"); console.log(resp)
 			if (resp && resp.name && resp.name.length > 0) {
 				bg.setLastPw("", resp.name, "")
@@ -194,7 +193,7 @@ function copyPassword(id) {
 function fillPassword(i, noSubmit, setHidden) {
 	let name = docId("name_"+i).innerText
 	let pw = docId("pw_"+i).value
-	chrome.tabs.query({active: true, currentWindow: true}, ts => {
+	currentTab().then(tab => {
 		let msg = {name: name, pw: pw}
 		if (!noSubmit) {
 			msg.action = "submit"
@@ -202,8 +201,13 @@ function fillPassword(i, noSubmit, setHidden) {
 		if (setHidden) {
 			msg.hidden = true
 		}
-		chrome.tabs.sendMessage(ts[0].id, msg, () => window.close())
+		chrome.tabs.sendMessage(tab.id, msg, () => window.close())
 	})
+}
+
+function fillUsername() {
+	let name = docId("newacct_name").value
+	currentTab().then(tab => chrome.tabs.sendMessage(tab.id, {action: "setname", name: name}))
 }
 
 function signUp(ev) {
@@ -256,9 +260,9 @@ function saveAccount(ev) {
 	})
 }
 
-function clearAccount() {
+function resetAccount(host) {
 	bg.clearLastPw(docId("newacct_host").value)
-	docId("newacct_host").value = ""
+	docId("newacct_host").value = host
 	docId("newacct_name").value = ""
 	docId("newacct_pw").value = ""
 }

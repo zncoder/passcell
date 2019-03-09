@@ -225,6 +225,12 @@ function localSet(items) {
 	})
 }
 
+function currentTab() {
+	return new Promise(resolve => {
+		chrome.tabs.query({active: true, currentWindow: true}, ts => resolve(ts[0]))
+	})
+}
+
 function getBackgroundPage() {
 	return new Promise(resolve => chrome.runtime.getBackgroundPage(bg => resolve(bg)))
 }
