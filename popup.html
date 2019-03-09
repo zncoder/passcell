@@ -53,15 +53,18 @@
 				<fieldset>
 					<legend id="newacct_h">New Account</legend>
 					<div class="login_grid">
+						<label>Host </label>
+						<input id="newacct_host" type="text" readonly>
 						<label for="newacct_name">Username </label>
 						<input type="text" id="newacct_name" autocomplete="off">
 						<label for="newacct_pw">Password </label>
-						<input type="text" id="newacct_pw" size="32">
+						<input type="text" id="newacct_pw" autocomplete="off" size="32">
 					</div>
 					<div class="row">
 						<input type="button" value="Generate" id="newacct_new" class="btn row_cell">
 						<input type="button" value="Length" id="newacct_resize" class="btn row_cell">
 						<input type="submit" value="Save" class="btn row_cell">
+						<input type="button" value="Clear" id="newacct_clear" class="btn row_cell">
 					</div>
 				</fieldset>
 			</form>

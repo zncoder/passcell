@@ -23,8 +23,8 @@ function loadPage() {
 	//console.log("openpopup")
 	hide(".page")
 
-	// already logged in
-	if (bg.loggedIn()) {
+	// already opened
+	if (bg.opened()) {
 		show("#site_sec")
 		hide("#oldaccts_sec")
 		show("#shownewacct_sec")
@@ -84,40 +84,44 @@ function hydrateSitePage(site) {
 		show("#oldaccts_sec")
 	}
 
-	let lastPw = bg.getLastPw(host)
+	let lastPw = bg.getLastPw()
 	if (lastPw) {
 		docId("newacct_name").value = lastPw[1]
 		docId("newacct_pw").value = lastPw[2]
 		showNewAccount()
+	} else {
+		docId("newacct_host").value = host
 	}
-	docId("newacct_form").addEventListener("submit", ev => saveAccount(ev, host))
-	docId("newacct_new").addEventListener("click", () => newAcctNew(host))
-	docId("newacct_resize").addEventListener("click", () => newAcctResize(host))
+	
+	docId("newacct_form").addEventListener("submit", ev => saveAccount(ev))
+	docId("newacct_new").addEventListener("click", () => newAcctNew())
+	docId("newacct_resize").addEventListener("click", () => newAcctResize())
+	docId("newacct_clear").addEventListener("click", () => clearAccount())
 }
 
-function newAcctPw(host) {
+function newAcctPw() {
 	let pw = generatePw(pwMode, pwLen)
 	docId("newacct_pw").value = pw
-	//clip(pw)
+	bg.setLastPw(docId("newacct_host").value, docId("newacct_name").value, pw)
 	chrome.tabs.query({active: true, currentWindow: true}, ts => {
 		chrome.tabs.sendMessage(ts[0].id, {pw: pw, action: "new"}, resp => {
 			//console.log("new resp"); console.log(resp)
-			bg.setLastPw(host, resp.name, pw)
-			if (resp.name) {
+			if (resp && resp.name && resp.name.length > 0) {
+				bg.setLastPw("", resp.name, "")
 				docId("newacct_name").value = resp.name
 			}
 		})
 	})
 }
 
-function newAcctNew(host) {
+function newAcctNew() {
 	pwMode = rotatePwMode(pwMode)
-	newAcctPw(host)
+	newAcctPw()
 }
 
-function newAcctResize(host) {
+function newAcctResize() {
 	pwLen = rotatePwLen(pwLen)
-	newAcctPw(host)
+	newAcctPw()
 }
 
 const acctTmpl = '<td>\n\
@@ -239,8 +243,9 @@ function recoverLogIn(ev) {
 		.then(() => loadPage())
 }
 
-function saveAccount(ev, host) {
+function saveAccount(ev) {
 	ev.preventDefault()
+	let host = docId("newacct_host").value
 	let name = docId("newacct_name").value
 	let pw = docId("newacct_pw").value
 	bg.addAccount(host, name, pw)
@@ -248,6 +253,13 @@ function saveAccount(ev, host) {
 	bg.pushState().then(() => {
 		window.close()
 	})
+}
+
+function clearAccount() {
+	bg.clearLastPw(docId("newacct_host").value)
+	docId("newacct_host").value = ""
+	docId("newacct_name").value = ""
+	docId("newacct_pw").value = ""
 }
 
 // https://stackoverflow.com/questions/400212/how-do-i-copy-to-the-clipboard-in-javascript

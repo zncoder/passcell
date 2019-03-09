@@ -54,7 +54,7 @@ let state = {
 	sites: []
 }
 
-function loggedIn() {
+function opened() {
 	return state.masterKey !== null
 }
 
@@ -62,20 +62,31 @@ function isOldAccount() {
 	return state.masterSalt !== null
 }
 
-function getLastPw(host) {
-	if (state.lastPw && state.lastPw[0] === host) {
-		return state.lastPw
-	}
-	return undefined
+function getLastPw() {
+	return state.lastPw
 }
 
 function setLastPw(host, name, pw) {
-	state.lastPw = [host, name, pw]
+	if (state.lastPw) {
+		if (host !== "") {
+			state.lastPw[0] = host
+		}
+		if (name !== "") {
+			state.lastPw[1] = name
+		}
+		if (pw !== "") {
+			state.lastPw[2] = pw
+		}
+	} else {
+		state.lastPw = [host, name, pw]
+	}
+	chrome.browserAction.setBadgeText({text: "✚"})
 }
 
 function clearLastPw(host) {
 	if (state.lastPw && state.lastPw[0] === host) {
 		state.lastPw = undefined
+		chrome.browserAction.setBadgeText({text: ""})
 	}
 }
 
@@ -454,10 +465,7 @@ function handleImportSites(ss, sendResponse) {
 }
 
 function handleNewSite(req, sendResponse) {
-	addAccount(req.host, req.name, req.pw)
-
-	return pushState()
-		.catch(e => { console.log("handlenewsite err"); console.log(e); })
+	setLastPw(req.host, req.name, req.pw)
 }
 
 function handleMessage(req, sender, sendResponse) {
