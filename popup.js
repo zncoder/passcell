@@ -86,6 +86,7 @@ function hydrateSitePage(site) {
 
 	let lastPw = bg.getLastPw()
 	if (lastPw) {
+		docId("newacct_host").value = lastPw[0]
 		docId("newacct_name").value = lastPw[1]
 		docId("newacct_pw").value = lastPw[2]
 		showNewAccount()
