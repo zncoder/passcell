@@ -177,7 +177,13 @@ function post(url, obj, timeout) {
 	let timeoutId = setTimeout(() => ac.abort(), timeout)
 	
 	return fetch(url, arg)
-		.then(resp => resp.json())
+		.then(resp => {
+			if (!resp.ok) {
+				console.log("fetch err:" + resp.statusText)
+				return Promise.reject(new Error(resp.statusText))
+			}
+			return resp.json()
+		})
 		.then(json => {
 			clearTimeout(timeoutId)
 			return json

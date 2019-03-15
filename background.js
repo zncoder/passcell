@@ -153,7 +153,9 @@ function signUp(em, pw) {
 }
 
 function onSignedIn() {
-	watchRemote() // don't return to unchain
+	// no return to unchain this promise.
+	// watchRemote runs in its own promise chain forever.
+	watchRemote()
 }
 
 function signUpRemote(url, pw, em, salt) {
@@ -182,9 +184,8 @@ function logIn(pw) {
 		})
 		.then(() => {			
 			enableContextMenu()
-			return pullRemote(false)
+			onSignedIn()
 		})
-		.then(() => onSignedIn())
 		.catch(e => { console.log("login err"); console.log(e); }) // terminate promise chain
 }
 
@@ -235,9 +236,8 @@ function recoverLogIn(em, pw) {
 			state.tokener = tr
 
 			enableContextMenu()
-			return pullRemote(false)
+			onSignedIn()
 		})
-		.then(() => onSignedIn())
 		.catch(e => { console.log("recoverlogin err"); console.log(e); })
 }
 
@@ -290,7 +290,7 @@ function pushState() {
 			ct = x
 			return saveState(ct)
 		})
-		.then(() => pushRemote(state.backend, state.token, state.version, ct))
+		.then(() => pushRemote(state.backend, state.token, state.version, ct, 0))
 }
 
 // save state locally
@@ -304,8 +304,17 @@ function saveState(ct) {
 	return localSet(v)
 }
 
-function pullRemote(poll) {
-	return fetchRemote(state.backend, state.masterKey, state.token, state.version, poll)
+// pullRemote:
+//    - watches for change
+//    - fetches the latest version from server
+//    - overwrites local sites.
+// pushRemote:
+//    - seal sites
+//    - push the change
+//    - no retry on conflict push, as pullRemote would overwrite local sites.
+
+function pullRemote(wait) {
+	return fetchRemote(state.backend, state.masterKey, state.token, state.version, wait, 0)
 		.then(vctss => {
 			let [ver, ct, ss] = vctss
 			console.log("pullremote got version:"+ver)
@@ -319,21 +328,14 @@ function pullRemote(poll) {
 		})
 }
 
-function fetchRemote(url, k, tk, ver, poll, ms) {
+function fetchRemote(url, k, tk, ver, wait, delay) {
 	let arg = {
 		token: tk,
 		cur_version: ver,
-		wait: poll
+		wait: wait,
 	}
 
-	let to
-	if (wait) {
-		to = 3600*1000
-	}
-
-	if (ms === undefined) {
-		ms = 0
-	}
+	let to = wait ? 90*1000 : 10*1000
 
 	return post(url+"/get", arg, to)
 		.then(res => {
@@ -343,18 +345,18 @@ function fetchRemote(url, k, tk, ver, poll, ms) {
 		})
 		.catch(e => {
 			console.log("fetchremote err"); console.log(e)
-			return backoffRefresh(ms, tk, e)
+			return backoffRefresh(delay, tk, e)
 				.then(mt => {
-					[ms, tk ] = mt
-					return fetchRemote(url, k, tk, ver, poll, ms)
+					[delay, tk ] = mt
+					return fetchRemote(url, k, tk, ver, wait, delay)
 				})
 		})
 }
 
-function backoffRefresh(ms, tk, e) {
-	return backoff(ms)
+function backoffRefresh(delay, tk, e) {
+	return backoff(delay)
 		.then(x => {
-			ms = x
+			delay = x
 
 			if (e.message !== "Unauthorized") {
 				return tk
@@ -362,10 +364,10 @@ function backoffRefresh(ms, tk, e) {
 				return refreshToken()
 			}
 		})
-		.then(x => [ms, x])
+		.then(x => [delay, x])
 }
 
-function pushRemote(url, tk, ver, ct, ms) {
+function pushRemote(url, tk, ver, ct, delay) {
 	let s = JSON.stringify({sites: ct}) // save as object for future changes.
 	let arg = {
 		token: tk,
@@ -374,21 +376,21 @@ function pushRemote(url, tk, ver, ct, ms) {
 	}
 	//console.log("put arg:"); console.log(arg)
 
-	if (ms === undefined) {
-		ms = 0
-	}
-	
 	return post(url+"/put", arg, postTimeout)
 		.then(res => {
 			console.log("uploaded version:"+res.version)
 			return res.version
 		})
 		.catch(e => {
-			console.log("pushremote err"); console.log(e)
-			return backoffRefresh(ms, tk, e)
+			//console.log("pushremote err"); console.log(e)
+			if (e.message === "Conflict") {
+				console.log("conflict version")
+				return
+			}
+			return backoffRefresh(delay, tk, e)
 				.then(mt => {
-					[ms, tk] = mt
-					return pushRemote(url, tk, ver, ct, ms)
+					[delay, tk] = mt
+					return pushRemote(url, tk, ver, ct, delay)
 				})
 		})
 }
