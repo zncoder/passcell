@@ -2,6 +2,8 @@
 // - notes
 // - sort accounts by most recent use time
 // - few password combinations
+// - save sealed diffset in localstorage
+// - keep log of all changes in server
 
 // notes:
 //
@@ -22,6 +24,14 @@
 // - prelogin to get mastersalt
 // - send authkey
 //
+// changes from multiple devices are serialized by server.
+// - version increments on every push
+// - a push is accepted only if version matches
+//    (no changes between this push and the last pull)
+// - a push is rejected if version does not match, and
+//    this device will pull the latest version, apply
+//    the changes, and push again.
+//
 // no permission of backend is needed for cors requests?
 // errors in the page that are triggered by sendMessage are populated back to caller
 // content_scripts is injected to every iframe and runs independently, when all_frames is true
@@ -36,7 +46,6 @@ let state = {
 	masterKey: null,
 	// token is from server after successful signup or login
 	token: "",
-	stopWatch: false,
 	backend: prodBackend,
 	// tokener refreshes access token
 	tokener: null,
@@ -49,8 +58,21 @@ let state = {
 	// version is the latest version we get from server
 	version: 0,
 	// array of [host, username, pw]
-	sites: []
+	sites: [],
+	// diffs since the last push.
+	// applying the same set of diffs should be idempotent.
+	// a diff is ["add", host, name, pw], ["remove", host, name, pw]
+	diffset: [],
+	// diffs are indexed so that we can tie a push with the particular
+	// set of diffs.  it is possible to have multiple pushes in
+	// flight. when a push completes, we truncate the diffset to the
+	// index and increment the base. base does not need to be persisted.
+	base: 0,
 }
+
+// debug stuff
+let stopWatch = false
+let retryOnErr = true
 
 function opened() {
 	return state.masterKey !== null
@@ -200,7 +222,7 @@ function newTokener(url, em, pw, salt) {
 			return () => {
 				return post(url+"/login", arg, postTimeout)
 					.then(res => {
-						console.log("got token"); console.log(res.token)
+						console.log(`got token ${res.token}`)
 						return res.token
 					})
 			}
@@ -250,13 +272,25 @@ function preLogInRemote(url, em) {
 }
 
 function watchRemote() {
-	if (state.stopWatch) {
+	if (stopWatch) {
 		console.log("stop remote watcher")
 		return
 	}
 
 	return pullRemote(true)
-		.then(() => watchRemote())
+		.then(() => {
+			// apply diffs that are not committed.
+			if (state.diffset.length > 0) {
+				console.log(`apply ${state.diffset.length} diffs`)
+				applyDiffs()
+				// catch errors to make sure watchRemote is chained
+				return pushState()
+					.catch(e => {console.log("pushstate after pull err:"); console.log(e)})
+			}
+		})
+		.then(() => {
+			return watchRemote()
+		})
 }
 
 function loadSealedState(key) {
@@ -282,15 +316,32 @@ function sealSites(key, ss) {
 		.then(x => JSON.stringify(x))
 }
 
+function applyDiffs() {
+	for (let x of state.diffset) {
+		switch (x[0]) {
+		case "add":
+			addSiteEntry(x[1], x[2], x[3])
+			break
+
+		case "remove":
+			removeSiteEntry(x[1], x[2])
+			break
+		}
+	}
+}
+
 // save state locally and push to remote
 function pushState() {
 	let ct
+	// tie diffset with this push. retry would use the same end
+	let end = state.base + state.diffset.length
+	//console.log(`pushstate base:${state.base},end:${end}`)
 	return sealSites(state.masterKey, state.sites)
 		.then(x => {
 			ct = x
 			return saveState(ct)
 		})
-		.then(() => pushRemote(state.backend, state.token, state.version, ct, 0))
+		.then(() => pushRemote(state.backend, state.token, state.version, ct, end, 0))
 }
 
 // save state locally
@@ -307,17 +358,22 @@ function saveState(ct) {
 // pullRemote:
 //    - watches for change
 //    - fetches the latest version from server
-//    - overwrites local sites.
+//    - overwrites local sites
+//    - if diffset is not empty, applies diffset and push state
 // pushRemote:
 //    - seal sites
 //    - push the change
+//    - truncate diffset that is pushed. diffset after the push will be pushed by next pullRemote
+//        - diffset is an array of changes
+//        - base of diffset increases monotonically
+//        - each push is sites + offset to diffset (index = offset - base)
 //    - no retry on conflict push, as pullRemote would overwrite local sites.
 
 function pullRemote(wait) {
 	return fetchRemote(state.backend, state.masterKey, state.token, state.version, wait, 0)
 		.then(vctss => {
 			let [ver, ct, ss] = vctss
-			console.log("pullremote got version:"+ver)
+			//console.log(`pullremote got version:${ver}`)
 			if (ver <= state.version) {
 				return
 			}
@@ -337,72 +393,116 @@ function fetchRemote(url, k, tk, ver, wait, delay) {
 
 	let to = wait ? 90*1000 : 10*1000
 
+	//console.log(`fetchremote with timeout:${to}`)
 	return post(url+"/get", arg, to)
 		.then(res => {
-			//console.log("fetchremote res"); console.log(res)
+			console.log(`fetchremote version:${res.version}`)
 			let x = JSON.parse(res.value)
 			return unsealSites(k, x.sites).then(ss => [res.version, x.sites, ss])
 		})
 		.catch(e => {
-			console.log("fetchremote err"); console.log(e)
-			return backoffRefresh(delay, tk, e)
-				.then(mt => {
-					[delay, tk ] = mt
+			if (!retryOnErr) {
+				console.log("fetchremote err"); console.log(e)
+				return Promise.reject(e)
+			}
+			return backoffRefresh(delay, tk, e)			
+				.then(x => {
+					[delay, tk] = x
 					return fetchRemote(url, k, tk, ver, wait, delay)
 				})
 		})
 }
 
 function backoffRefresh(delay, tk, e) {
+	if (e.name === "AbortError") {
+		// fetch aborted, no backoff and reset delay
+		return Promise.resolve([0, tk])
+	}
+
 	return backoff(delay)
 		.then(x => {
 			delay = x
 
-			if (e.message !== "Unauthorized") {
-				return tk
-			} else {
+			if (e.message === "Unauthorized") {
 				return refreshToken()
 			}
+			return tk
 		})
-		.then(x => [delay, x])
+		.then(tk => [delay, tk])
 }
 
-function pushRemote(url, tk, ver, ct, delay) {
+function pushRemote(url, tk, ver, ct, end, delay) {
 	let s = JSON.stringify({sites: ct}) // save as object for future changes.
 	let arg = {
 		token: tk,
 		prev_version: ver,
 		value: s
 	}
-	//console.log("put arg:"); console.log(arg)
 
 	return post(url+"/put", arg, postTimeout)
 		.then(res => {
-			console.log("uploaded version:"+res.version)
-			return res.version
+			if (end > state.base) {
+				console.log(`pushed version:${res.version}, truncate diffset from ${state.base} to ${end}`)
+				state.diffset.splice(0, end - state.base)
+				state.base = end
+			} else {
+				console.log(`diffset:${end} of version:{$res.version} is superseded`)
+			}
 		})
 		.catch(e => {
-			//console.log("pushremote err"); console.log(e)
+			console.log(`pushremote at version:${ver},end:${end} err`); console.log(e)
 			if (e.message === "Conflict") {
+				// no retry on conflict version.
+				// let pullremote retry push after get the latest version.
 				console.log("conflict version")
-				return
+				return Promise.reject(e)
+			}
+			if (!retryOnErr) {
+				console.log("pushremote err"); console.log(e)
+				return Promise.reject(e)
 			}
 			return backoffRefresh(delay, tk, e)
-				.then(mt => {
-					[delay, tk] = mt
-					return pushRemote(url, tk, ver, ct, delay)
+				.then(x => {
+					[delay, tk] = x
+					return pushRemote(url, tk, ver, ct, end, delay)
 				})
 		})
 }
 
-function addAccount(host, name, pw) {
-	for (let i = 0; i < state.sites.length; i++) {
-		let x = state.sites[i]
-		if (x[0] == host && x[1] == name && x[2] == pw) {
+function addSiteEntry(host, name, pw) {
+	for (let x of state.sites) {
+		if (x[0] === host && x[1] === name) {
+			console.log(`change pw of ${host}:${name}`)
+			x[2] = pw
 			return
 		}
 	}
+	console.log(`new entry ${host}:${name}`)
 	state.sites.push([host, name, pw])
+}
+
+function removeSiteEntry(host, name) {
+	for (let i = 0; i < state.sites.length; i++) {
+		let x = state.sites[i]
+		if (x[0] === host && x[1] === name) {
+			console.log(`remove entry ${host}:${name}`)
+			state.sites.splice(i, 1)
+			return
+		}
+	}
+}
+
+function addAccount(host, name, pw) {
+	addSite(host, name, pw)
+	clearLastPw(host)
+	return pushState()
+		.catch(e => {console.log("pushstate err"); console.log(e)})
+}
+
+function addSite(host, name, pw) {
+	addSiteEntry(host, name, pw)
+	// todo: seal and save diffset
+	state.diffset.push(["add", host, name, pw])
 }
 
 function matchSite(host) {
@@ -453,9 +553,10 @@ function importSites(ss) {
 	//console.log("importsites"); console.log(ss)
 	for (let x of ss) {
 		let [h, n, p] = x
-		addAccount(h, n, p)
+		addSite(h, n, p)
 	}
 	return pushState()
+		.catch(e => { console.log("importsites err"); console.log(e); })
 }
 
 function handleImportSites(ss, sendResponse) {

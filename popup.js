@@ -254,10 +254,7 @@ function saveAccount(ev) {
 	let name = docId("newacct_name").value
 	let pw = docId("newacct_pw").value
 	bg.addAccount(host, name, pw)
-	bg.clearLastPw(host)
-	bg.pushState().then(() => {
-		window.close()
-	})
+		.then(() => window.close())
 }
 
 function resetAccount(host) {

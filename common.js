@@ -190,19 +190,22 @@ function post(url, obj, timeout) {
 		})
 }
 
-// exponential backoff, return new backoff upper bound
-function backoff(ms) {
-	if (ms < 1000) {
-		ms = 1000
+// exponential backoff between 1s and 300s.
+// return new backoff upper bound
+function backoff(delay) {
+	// make sure delay is an integer in case of bug
+	delay = delay || 1000
+	if (delay < 1000) {
+		delay = 1000
 	} else {
-		ms *= 2
-		if (ms > 300*1000) {
-			ms = 300*1000
+		delay *= 2
+		if (delay > 300*1000) {
+			delay = 300*1000
 		}
 	}
-	let x = Math.floor(Math.random() * (ms-100))+100 // min 100ms 
-	console.log("backoff "+x+"ms/"+ms+"ms")
-	return wait(x).then(() => ms)
+	let x = Math.floor(Math.random() * (delay-100))+100 // min 100ms
+	console.log(`backoff ${x} out of ${delay}`)
+	return wait(x).then(() => delay)
 }
 
 function localGet(keys) {
