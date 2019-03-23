@@ -72,48 +72,44 @@ function tidyUrl(u) {
 }
 
 // password generator, special char is $
-const pwCharset = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789"
+const pwCharset = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
 
-// mode: 0: a-z; 1: a-zA-Z; 2: a-zA-Z0-9; 3: a-zA-Z0-9$
-function generatePw(mode, len) {
-	let n = 26
-	switch (mode) {
+// pwMode:
+// 0 - 32B, no special char
+// 1 - 32B, special char
+// 2 - 16B, no special char
+// 3 - 16B, special char
+// 4 - 8B, no special char
+// 5 - 8B, special char
+let pwMode = 0
+
+function generatePw() {
+	let len = 32
+	switch (pwMode - pwMode%2) {
 	case 0:
+		len = 32
 		break
-	case 1:
-		n = 26*2
+	case 2:
+		len = 16
 		break
-	default:
-		n = 26*2+10
+	case 4:
+		len = 8
+		break
 	}
 
-	let b = []
+	let b = new Array(len)
 	for (let i = 0; i < len; i++) {
-		let x = int8n(n)
-		b.push(pwCharset.charAt(x))
+		let x = int8n(pwCharset.length)
+		b[i] = pwCharset.charAt(x)
 	}
 
-	if (mode == 3) {
+	if ((pwMode % 2) !== 0) {
 		let x = int8n(len)
 		b[x] = "$"
 	}
+	
+	pwMode = (pwMode + 1) % 6
 	return b.join("")
-}
-
-function rotatePwMode(mode) {
-	mode++
-	if (mode > 3) {
-		mode = 0
-	}
-	return mode
-}
-
-function rotatePwLen(n) {
-	n -= 8
-	if (n < 8) {
-		n = 32
-	}
-	return n
 }
 
 function deriveBits(b, salt) {

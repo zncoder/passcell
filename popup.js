@@ -1,8 +1,5 @@
 let bg = null
 
-let pwLen = 32 // 8,16,24,32
-let pwMode = 0
-
 let autoSubmitBlacklist = new Set([
 	"login.fidelity.com",
 	"online.citi.com",
@@ -94,13 +91,12 @@ function hydrateSitePage(site) {
 	
 	docId("newacct_form").addEventListener("submit", saveAccount)
 	docId("newacct_new").addEventListener("click", newAcctNew)
-	docId("newacct_resize").addEventListener("click", newAcctResize)
 	docId("newacct_reset").addEventListener("click", () => resetAccount(host))
 	docId("newacct_name").addEventListener("input", fillUsername)
 }
 
-function newAcctPw() {
-	let pw = generatePw(pwMode, pwLen)
+function newAcctNew() {
+	let pw = generatePw()
 	docId("newacct_pw").value = pw
 	bg.setLastPw(docId("newacct_host").value, docId("newacct_name").value, pw)
 	currentTab().then(tab => {
@@ -114,16 +110,6 @@ function newAcctPw() {
 	})
 }
 
-function newAcctNew() {
-	pwMode = rotatePwMode(pwMode)
-	newAcctPw()
-}
-
-function newAcctResize() {
-	pwLen = rotatePwLen(pwLen)
-	newAcctPw()
-}
-
 const acctTmpl = '<td>\n\
   <div class="tip">\n\
     <span id="name_{id}">{name}</span><span class="tiptext">copy</span>\n\
@@ -132,11 +118,11 @@ const acctTmpl = '<td>\n\
 <td class="center_td">\n\
   <input type="hidden" id="pw_{id}" value="{pw}">\n\
   <div class="tip">\n\
-    <img id="pwimg_{id}" src="icons/copy.png" />&nbsp;\n\
+    <img id="pwimg_{id}" src="icons/pw.png" />&nbsp;\n\
     <span class="tiptext">copy</span>\n\
   </div>\n\
   <div class="tip">\n\
-    <img id="fillimg_{id}" src="icons/fill.png" />\n\
+    <img id="fillimg_{id}" src="icons/ok.png" />\n\
     <span class="tiptext">fill</span>\n\
   </div>\n\
 </td>'
