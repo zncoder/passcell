@@ -118,11 +118,19 @@ const acctTmpl = '<td>\n\
 <td class="center_td">\n\
   <input type="hidden" id="pw_{id}" value="{pw}">\n\
   <div class="tip">\n\
-    <img id="pwimg_{id}" src="icons/pw.png" />&nbsp;\n\
+    <img id="pwimg_{id}" src="icons/pw.png" />\n\
     <span class="tiptext">copy</span>\n\
   </div>\n\
+</td>\n\
+<td class="center_td">\n\
   <div class="tip">\n\
-    <img id="fillimg_{id}" src="icons/ok.png" />\n\
+    <img id="autologinimg_{id}" src="icons/autologin.png" />\n\
+    <span class="tiptext">autologin</span>\n\
+  </div>\n\
+</td>\n\
+<td class="center_td">\n\
+  <div class="tip">\n\
+    <img id="fillimg_{id}" src="icons/fill.png" />\n\
     <span class="tiptext">fill</span>\n\
   </div>\n\
 </td>'
@@ -161,7 +169,8 @@ function hydrateOldAccounts(host, tb) {
 		docId(nameid).addEventListener("click", () => copyName(nameid))
 		let pwid = "pw_"+i
 		docId("pwimg_"+i).addEventListener("click", () => copyPassword(pwid))
-		docId("fillimg_"+i).addEventListener("click", ev => fillPassword(""+i, noSubmit || ev.ctrlKey, setHidden))
+		docId("autologinimg_"+i).addEventListener("click", ev => fillPassword(""+i, noSubmit, setHidden))
+		docId("fillimg_"+i).addEventListener("click", ev => fillPassword(""+i, true, setHidden))
 	}
 	return true
 }

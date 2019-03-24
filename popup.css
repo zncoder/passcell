@@ -3,15 +3,12 @@ body {
 		font-size: 1.1em;
 }
 
-.siteurl_h {
-		text-align: center;
-		margin-top: 0.5em;
-		margin-bottom: 0.5em;
-		border-style: none none double none;
-}
-
 .page {
 		display: none;
+}
+
+#shownewacct_acct {
+		width: 480px;
 }
 
 .btn {
@@ -19,6 +16,7 @@ body {
 		background-color: lightskyblue;
 		border-radius: 2px;
 		margin: 2px;
+		font-size: 1em;
 }
 
 .btn:hover {
@@ -41,7 +39,7 @@ body {
 
 #oldaccts {
 		width: 100%;
-		border-style: none none solid none;
+		border-style: solid none solid none;
 		border-width: thin;
 }
 
@@ -73,12 +71,14 @@ tr:nth-child(even) {
     text-align: left;
     border-radius: 4px;
     padding: 2px;
-    
+		font-size: 0.8em;
+
     /* Position the tooltip */
     position: absolute;
     z-index: 1;
     top: 100%;
-    left: 20%;
+    left: 30%;
+		margin-left: -20px;
 }
 
 .tip:hover .tiptext {
