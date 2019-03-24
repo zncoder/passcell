@@ -7,10 +7,6 @@ body {
 		display: none;
 }
 
-#shownewacct_acct {
-		width: 480px;
-}
-
 .btn {
 		border: 0px;
 		background-color: lightskyblue;
@@ -21,6 +17,21 @@ body {
 
 .btn:hover {
 		background-color: deepskyblue;
+}
+
+.status_left {
+    float: left;
+}
+
+.status_right {
+    float: right;
+}
+
+#status_box {
+		overflow: auto;
+    position: relative;
+		display: block;
+		font-size: 0.6em;
 }
 
 .login_grid {

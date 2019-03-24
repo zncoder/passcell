@@ -25,6 +25,7 @@ function loadPage() {
 		show("#site_sec")
 		hide("#oldaccts_sec")
 		show("#shownewacct_sec")
+		hide("#status_sec")
 		hide("#newacctdetail_sec")
 		docId("shownewacct_acct").addEventListener("click", showNewAccount)
 		currentTab().then(tab => hydrateSitePage(tidyUrl(tab.url)))
@@ -77,6 +78,7 @@ function hydrateSitePage(site) {
 	let host = site[1]
 	if (hydrateOldAccounts(host, docId("oldaccts"))) {
 		show("#oldaccts_sec")
+		show("#status_sec")
 	}
 
 	let lastPw = bg.getLastPw()
