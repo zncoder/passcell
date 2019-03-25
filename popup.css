@@ -69,29 +69,3 @@ tr:nth-child(even) {
 #oldaccts span,img {
 		cursor: pointer;
 }
-
-.tip {
-    position: relative;
-    display: inline-block;
-}
-
-.tip .tiptext {
-    visibility: hidden;
-    background-color: black;
-    color: #fff;
-    text-align: left;
-    border-radius: 4px;
-    padding: 2px;
-		font-size: 0.8em;
-
-    /* Position the tooltip */
-    position: absolute;
-    z-index: 1;
-    top: 100%;
-    left: 30%;
-		margin-left: -20px;
-}
-
-.tip:hover .tiptext {
-    visibility: visible;
-}

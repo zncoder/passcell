@@ -112,30 +112,47 @@ function newAcctNew() {
 	})
 }
 
-const acctTmpl = '<td>\n\
-  <div class="tip">\n\
-    <span id="name_{id}">{name}</span><span class="tiptext">copy</span>\n\
-  </div>\n\
-</td>\n\
-<td class="center_td">\n\
-  <input type="hidden" id="pw_{id}" value="{pw}">\n\
-  <div class="tip">\n\
-    <img id="pwimg_{id}" src="icons/pw.png" />\n\
-    <span class="tiptext">copy</span>\n\
-  </div>\n\
-</td>\n\
-<td class="center_td">\n\
-  <div class="tip">\n\
-    <img id="autologinimg_{id}" src="icons/autologin.png" />\n\
-    <span class="tiptext">autologin</span>\n\
-  </div>\n\
-</td>\n\
-<td class="center_td">\n\
-  <div class="tip">\n\
-    <img id="fillimg_{id}" src="icons/fill.png" />\n\
-    <span class="tiptext">fill</span>\n\
-  </div>\n\
-</td>'
+// <tr class="acct_row">
+// <td><span id="name_{id}">{name}</span></td>
+// <td class="center_td"><img id="pwimg_{id}" src="icons/pw.png" /></td>
+// <td class="center_td"><img id="autologinimg_{id}" src="icons/autologin.png" /></td>
+// <td class="center_td"><img id="fillimg_{id}" src="icons/fill.png" /></td>
+// </tr>
+function accountRow(acct, id, noSubmit, setHidden) {
+	let [host, name, pw] = acct
+
+	let tr = document.createElement("tr")
+	tr.classList.add("acct_row")
+
+	let nodes = new Array(4)
+	nodes[0] = `<td><span id="name_${id}">${name}</span></td>`
+	nodes[1] = `<td class="center_td"><img id="pwimg_${id}" src="icons/pw.png" /></td>`
+	nodes[2] = `<td class="center_td"><img id="autologinimg_${id}" src="icons/autologin.png" /></td>`
+	nodes[3] = `<td class="center_td"><img id="fillimg_${id}" src="icons/fill.png" /></td>`
+	tr.innerHTML = nodes.join("\n")
+
+	let el = tr.querySelector(`#name_${id}`)
+	el.addEventListener("mouseover", () => showStatus("click to copy name"))
+	el.addEventListener("mouseout", () => showStatus(""))
+	el.addEventListener("click", () => clip(name))
+
+	el = tr.querySelector(`#pwimg_${id}`)
+	el.addEventListener("mouseover", () => showStatus("click to copy password"))
+	el.addEventListener("mouseout", () => showStatus(""))
+	el.addEventListener("click", () => clip(pw))
+
+	el = tr.querySelector(`#autologinimg_${id}`)
+	el.addEventListener("mouseover", () => showStatus("click to log in"))
+	el.addEventListener("mouseout", () => showStatus(""))
+	el.addEventListener("click", () => fillPassword(name, pw, noSubmit, setHidden))
+	
+	el = tr.querySelector(`#fillimg_${id}`)
+	el.addEventListener("mouseover", () => showStatus("click to fill form"))
+	el.addEventListener("mouseout", () => showStatus(""))
+	el.addEventListener("click", () => fillPassword(name, pw, true, setHidden))
+
+	return tr
+}
 
 function hydrateOldAccounts(host, tb) {
 	let accts = bg.matchSite(host)
@@ -156,40 +173,17 @@ function hydrateOldAccounts(host, tb) {
 	let setHidden = hiddenWhitelist.has(host)
 
 	for (let i = 0; i < accts.length; i++) {
-		let x = accts[i]
-		//console.log(x)
-		let name = x[1]
-		let pw = x[2]
-
-		let acct = document.createElement("tr")
-		acct.classList.add("acct_row")
-		acct.innerHTML = acctTmpl.replace(/{id}/g, i+"")
-			.replace(/{name}/g, name)
-			.replace(/{pw}/g, pw)
-		tb.appendChild(acct)
-		let nameid = "name_"+i
-		docId(nameid).addEventListener("click", () => copyName(nameid))
-		let pwid = "pw_"+i
-		docId("pwimg_"+i).addEventListener("click", () => copyPassword(pwid))
-		docId("autologinimg_"+i).addEventListener("click", ev => fillPassword(""+i, noSubmit, setHidden))
-		docId("fillimg_"+i).addEventListener("click", ev => fillPassword(""+i, true, setHidden))
+		let tr = accountRow(accts[i], i, noSubmit, setHidden)
+		tb.appendChild(tr)
 	}
 	return true
 }
 
-function copyName(id) {
-	let el = docId(id)
-	clip(el.innerText)
+function showStatus(s) {
+	docId("status_box").innerText = s
 }
 
-function copyPassword(id) {
-	let el = docId(id)
-	clip(el.value)
-}
-
-function fillPassword(i, noSubmit, setHidden) {
-	let name = docId("name_"+i).innerText
-	let pw = docId("pw_"+i).value
+function fillPassword(name, pw, noSubmit, setHidden) {
 	currentTab().then(tab => {
 		let msg = {name: name, pw: pw}
 		if (!noSubmit) {
