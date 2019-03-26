@@ -93,14 +93,21 @@ function hydrateSitePage(site) {
 	
 	docId("newacct_form").addEventListener("submit", saveAccount)
 	docId("newacct_new").addEventListener("click", newAcctNew)
-	docId("newacct_reset").addEventListener("click", () => resetAccount(host))
+	docId("newacct_cancel").addEventListener("click", () => cancelAccount(host))
 	docId("newacct_name").addEventListener("input", fillUsername)
 }
 
 function newAcctNew() {
-	let pw = generatePw()
+	let [pw, len, sc] = generatePw()
 	docId("newacct_pw").value = pw
 	bg.setLastPw(docId("newacct_host").value, docId("newacct_name").value, pw)
+
+	let s = `password size is ${len}`
+	if (sc) {
+		s += ", with special char"
+	}
+	showStatus(s)
+
 	currentTab().then(tab => {
 		chrome.tabs.sendMessage(tab.id, {pw: pw, action: "new"}, resp => {
 			//console.log("new resp"); console.log(resp)
@@ -248,11 +255,15 @@ function saveAccount(ev) {
 		.then(() => window.close())
 }
 
-function resetAccount(host) {
+function cancelAccount(host) {
 	bg.clearLastPw(docId("newacct_host").value)
 	docId("newacct_host").value = host
 	docId("newacct_name").value = ""
 	docId("newacct_pw").value = ""
+
+	hide("#newacctdetail_sec")
+	show("#shownewacct_sec")
+	showStatus("")
 }
 
 // https://stackoverflow.com/questions/400212/how-do-i-copy-to-the-clipboard-in-javascript

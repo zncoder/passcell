@@ -103,13 +103,14 @@ function generatePw() {
 		b[i] = pwCharset.charAt(x)
 	}
 
-	if ((pwMode % 2) !== 0) {
+	let sc = (pwMode % 2) !== 0
+	if (sc) {
 		let x = int8n(len)
 		b[x] = "$"
 	}
 	
 	pwMode = (pwMode + 1) % 6
-	return b.join("")
+	return [b.join(""), len, sc]
 }
 
 function deriveBits(b, salt) {
