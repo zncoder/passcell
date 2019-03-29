@@ -27,6 +27,7 @@ function loadPage() {
 		show("#shownewacct_sec")
 		hide("#status_sec")
 		hide("#newacctdetail_sec")
+		hide("#editacctdetail_sec")
 		docId("shownewacct_acct").addEventListener("click", showNewAccount)
 		currentTab().then(tab => hydrateSitePage(tidyUrl(tab.url)))
 		return
@@ -91,23 +92,21 @@ function hydrateSitePage(site) {
 		docId("newacct_host").value = host
 	}
 	
-	docId("newacct_form").addEventListener("submit", saveAccount)
+	docId("newacct_form").addEventListener("submit", saveNewAccount)
 	docId("newacct_new").addEventListener("click", newAcctNew)
-	docId("newacct_cancel").addEventListener("click", () => cancelAccount(host))
+	docId("newacct_cancel").addEventListener("click", () => cancelNewAccount(host))
 	docId("newacct_name").addEventListener("input", fillUsername)
+
+	docId("editacct_form").addEventListener("submit", saveEditAccount)
+	docId("editacct_new").addEventListener("click", newAcctEdit)
+	docId("editacct_remove").addEventListener("click", removeEditAccount)
+	docId("editacct_cancel").addEventListener("click", finishEditAccount)
 }
 
 function newAcctNew() {
-	let [pw, len, sc] = generatePw()
-	docId("newacct_pw").value = pw
+	newPw("newacct_pw")
 	bg.setLastPw(docId("newacct_host").value, docId("newacct_name").value, pw)
-
-	let s = `password size is ${len}`
-	if (sc) {
-		s += ", with special char"
-	}
-	showStatus(s)
-
+	
 	currentTab().then(tab => {
 		chrome.tabs.sendMessage(tab.id, {pw: pw, action: "new"}, resp => {
 			//console.log("new resp"); console.log(resp)
@@ -119,11 +118,23 @@ function newAcctNew() {
 	})
 }
 
+function newPw(id) {
+	let [pw, len, sc] = generatePw()
+	docId(id).value = pw
+
+	let s = `password size is ${len}`
+	if (sc) {
+		s += ", with special char"
+	}
+	showStatus(s)
+}
+
 // <tr class="acct_row">
 // <td><span id="name_{id}">{name}</span></td>
 // <td class="center_td"><img id="pwimg_{id}" src="icons/pw.png" /></td>
 // <td class="center_td"><img id="autologinimg_{id}" src="icons/autologin.png" /></td>
 // <td class="center_td"><img id="fillimg_{id}" src="icons/fill.png" /></td>
+// <td class="center_td"><img id="editimg_{id}" src="icons/edit.png" /></td>
 // </tr>
 function accountRow(acct, id, noSubmit, setHidden) {
 	let [host, name, pw] = acct
@@ -136,6 +147,7 @@ function accountRow(acct, id, noSubmit, setHidden) {
 	nodes[1] = `<td class="center_td"><img id="pwimg_${id}" src="icons/pw.png" /></td>`
 	nodes[2] = `<td class="center_td"><img id="autologinimg_${id}" src="icons/autologin.png" /></td>`
 	nodes[3] = `<td class="center_td"><img id="fillimg_${id}" src="icons/fill.png" /></td>`
+	nodes[4] = `<td class="center_td"><img id="editimg_${id}" src="icons/edit.png" /></td>`
 	tr.innerHTML = nodes.join("\n")
 
 	let el = tr.querySelector(`#name_${id}`)
@@ -157,6 +169,11 @@ function accountRow(acct, id, noSubmit, setHidden) {
 	el.addEventListener("mouseover", () => showStatus("click to fill form"))
 	el.addEventListener("mouseout", () => showStatus(""))
 	el.addEventListener("click", () => fillPassword(name, pw, true, setHidden))
+
+	el = tr.querySelector(`#editimg_${id}`)
+	el.addEventListener("mouseover", () => showStatus("click to edit account"))
+	el.addEventListener("mouseout", () => showStatus(""))
+	el.addEventListener("click", () => editAccount(host, name, pw))
 
 	return tr
 }
@@ -188,6 +205,59 @@ function hydrateOldAccounts(host, tb) {
 
 function showStatus(s) {
 	docId("status_box").innerText = s
+}
+
+function editAccount(host, name, pw) {
+	docId("editacct_host").value = host
+	docId("editacct_old_host").value = host
+	docId("editacct_name").value = name
+	docId("editacct_old_name").value = name
+	docId("editacct_pw").value = pw
+	docId("editacct_old_pw").value = pw
+
+	hide("#shownewacct_sec")
+	show("#editacctdetail_sec")
+}
+
+function saveEditAccount(ev) {
+	ev.preventDefault()
+	let oldHost = docId("editacct_old_host").value
+	let oldName = docId("editacct_old_name").value
+	let oldPw = docId("editacct_old_pw").value
+	let host = docId("editacct_host").value
+	let name = docId("editacct_name").value
+	let pw = docId("editacct_pw").value
+	bg.updateAccount([
+		["remove", oldHost, oldName, oldPw],
+		["add", host, name, pw],
+	]).then(finishEditAccount)
+}
+
+function newAcctEdit() {
+	newPw("editacct_pw")
+	let el = docId("editacct_pw")
+	if (el.type === "password") {
+		el.type = "text"
+	}
+}
+
+function removeEditAccount() {
+	let oldHost = docId("editacct_old_host").value
+	let oldName = docId("editacct_old_name").value
+	let oldPw = docId("editacct_old_pw").value
+	bg.updateAccount([
+		["remove", oldHost, oldName, oldPw],
+	]).then(finishEditAccount)
+}
+
+function finishEditAccount() {
+	docId("editacct_host").value = ""
+	docId("editacct_old_host").value = ""
+	docId("editacct_name").value = ""
+	docId("editacct_old_name").value = ""
+	docId("editacct_pw").value = ""
+	docId("editacct_old_pw").value = ""
+	window.close()
 }
 
 function fillPassword(name, pw, noSubmit, setHidden) {
@@ -246,16 +316,16 @@ function recoverLogIn(ev) {
 		.then(() => loadPage())
 }
 
-function saveAccount(ev) {
+function saveNewAccount(ev) {
 	ev.preventDefault()
 	let host = docId("newacct_host").value
 	let name = docId("newacct_name").value
 	let pw = docId("newacct_pw").value
 	bg.addAccount(host, name, pw)
-		.then(() => window.close())
+		.then(window.close)
 }
 
-function cancelAccount(host) {
+function cancelNewAccount(host) {
 	bg.clearLastPw(docId("newacct_host").value)
 	docId("newacct_host").value = host
 	docId("newacct_name").value = ""

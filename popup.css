@@ -58,7 +58,7 @@ tr:nth-child(even) {
     background-color: cyan;
 }
 
-.acct_row:hover {
+.acct_row td:hover {
 		background-color: lightskyblue;
 }
 
@@ -66,6 +66,6 @@ tr:nth-child(even) {
 		text-align: center;
 }
 
-#oldaccts span,img {
+.acct_row span,img {
 		cursor: pointer;
 }

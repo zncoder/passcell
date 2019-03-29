@@ -64,6 +64,31 @@
 			</form>
 		</div>
 
+		<div id="editacctdetail_sec">
+			<form id="editacct_form">
+				<fieldset>
+					<legend id="editacct_h">Edit Account</legend>
+					<div class="login_grid">
+						<label for="editacct_host">Host </label>
+						<input id="editacct_host" type="text">
+						<input id="editacct_old_host" type="hidden">
+						<label for="editacct_name">Username </label>
+						<input type="text" id="editacct_name" autocomplete="off">
+						<input id="editacct_old_name" type="hidden">
+						<label for="editacct_pw">Password </label>
+						<input type="password" id="editacct_pw" autocomplete="off" size="32">
+						<input id="editacct_old_pw" type="hidden">
+					</div>
+					<div class="row">
+						<input type="button" value="Generate" id="editacct_new" class="btn row_cell">
+						<input type="submit" value="Save" class="btn row_cell">
+						<input type="button" value="Remove" id="editacct_remove" class="btn row_cell">
+						<input type="button" value="Cancel" id="editacct_cancel" class="btn row_cell">
+					</div>
+				</fieldset>
+			</form>
+		</div>
+
 		<div id="oldaccts_sec">
 			<table id="oldaccts">
 			</table>

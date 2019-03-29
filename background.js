@@ -446,7 +446,7 @@ function pushRemote(url, tk, ver, ct, end, delay) {
 				state.diffset.splice(0, end - state.base)
 				state.base = end
 			} else {
-				console.log(`diffset:${end} of version:{$res.version} is superseded`)
+				console.log(`diffset:${end} of version:${res.version} is superseded`)
 			}
 		})
 		.catch(e => {
@@ -503,6 +503,28 @@ function addSite(host, name, pw) {
 	addSiteEntry(host, name, pw)
 	// todo: seal and save diffset
 	state.diffset.push(["add", host, name, pw])
+}
+
+function removeSite(host, name) {
+	removeSiteEntry(host, name)
+	state.diffset.push(["remove", host, name])
+}
+
+function updateAccount(diffs) {
+	for (let x of diffs) {
+		switch (x[0]) {
+		case "add":
+			addSite(x[1], x[2], x[3])
+			break
+
+		case "remove":
+			removeSite(x[1], x[2])
+			break
+		}
+	}
+
+	return pushState()
+		.catch(e => {console.log("pushstate err"); console.log(e)})
 }
 
 function matchSite(host) {
