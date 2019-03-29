@@ -62,10 +62,6 @@ tr:nth-child(even) {
 		background-color: lightskyblue;
 }
 
-.center_td {
-		text-align: center;
-}
-
-.acct_row span,img {
-		cursor: pointer;
+.copy_btn {
+		cursor: copy;
 }

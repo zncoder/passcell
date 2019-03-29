@@ -130,11 +130,11 @@ function newPw(id) {
 }
 
 // <tr class="acct_row">
-// <td><span id="name_{id}">{name}</span></td>
-// <td class="center_td"><img id="pwimg_{id}" src="icons/pw.png" /></td>
-// <td class="center_td"><img id="autologinimg_{id}" src="icons/autologin.png" /></td>
-// <td class="center_td"><img id="fillimg_{id}" src="icons/fill.png" /></td>
-// <td class="center_td"><img id="editimg_{id}" src="icons/edit.png" /></td>
+// <td class="copy_btn"><span id="name_{id}">{name}</span></td>
+// <td class="copy_btn"><img id="pwimg_{id}" src="icons/pw.png" /></td>
+// <td><img id="autologinimg_{id}" src="icons/autologin.png" /></td>
+// <td><img id="fillimg_{id}" src="icons/fill.png" /></td>
+// <td><img id="editimg_{id}" src="icons/edit.png" /></td>
 // </tr>
 function accountRow(acct, id, noSubmit, setHidden) {
 	let [host, name, pw] = acct
@@ -143,11 +143,11 @@ function accountRow(acct, id, noSubmit, setHidden) {
 	tr.classList.add("acct_row")
 
 	let nodes = new Array(4)
-	nodes[0] = `<td><span id="name_${id}">${name}</span></td>`
-	nodes[1] = `<td class="center_td"><img id="pwimg_${id}" src="icons/pw.png" /></td>`
-	nodes[2] = `<td class="center_td"><img id="autologinimg_${id}" src="icons/autologin.png" /></td>`
-	nodes[3] = `<td class="center_td"><img id="fillimg_${id}" src="icons/fill.png" /></td>`
-	nodes[4] = `<td class="center_td"><img id="editimg_${id}" src="icons/edit.png" /></td>`
+	nodes[0] = `<td class="copy_btn"><span id="name_${id}">${name}</span></td>`
+	nodes[1] = `<td class="copy_btn"><img id="pwimg_${id}" src="icons/pw.png" /></td>`
+	nodes[2] = `<td><img id="autologinimg_${id}" src="icons/autologin.png" /></td>`
+	nodes[3] = `<td><img id="fillimg_${id}" src="icons/fill.png" /></td>`
+	nodes[4] = `<td><img id="editimg_${id}" src="icons/edit.png" /></td>`
 	tr.innerHTML = nodes.join("\n")
 
 	let el = tr.querySelector(`#name_${id}`)
