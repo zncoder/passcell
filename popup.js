@@ -136,7 +136,7 @@ function newPw(id) {
 // <td><img id="fillimg_{id}" src="icons/fill.png" /></td>
 // <td><img id="editimg_{id}" src="icons/edit.png" /></td>
 // </tr>
-function accountRow(acct, id, noSubmit, setHidden) {
+function accountRow(acct, id, noSubmit, setHidden, updateRecent) {
 	let [host, name, pw] = acct
 
 	let tr = document.createElement("tr")
@@ -163,12 +163,12 @@ function accountRow(acct, id, noSubmit, setHidden) {
 	el = tr.querySelector(`#autologinimg_${id}`)
 	el.addEventListener("mouseover", () => showStatus("click to log in"))
 	el.addEventListener("mouseout", () => showStatus(""))
-	el.addEventListener("click", () => fillPassword(name, pw, noSubmit, setHidden))
+	el.addEventListener("click", () => fillPassword(host, name, pw, noSubmit, setHidden, updateRecent))
 	
 	el = tr.querySelector(`#fillimg_${id}`)
 	el.addEventListener("mouseover", () => showStatus("click to fill form"))
 	el.addEventListener("mouseout", () => showStatus(""))
-	el.addEventListener("click", () => fillPassword(name, pw, true, setHidden))
+	el.addEventListener("click", () => fillPassword(host, name, pw, true, setHidden, updateRecent))
 
 	el = tr.querySelector(`#editimg_${id}`)
 	el.addEventListener("mouseover", () => showStatus("click to edit account"))
@@ -183,21 +183,12 @@ function hydrateOldAccounts(host, tb) {
 	if (accts.length == 0) {
 		return false
 	}
-	accts.sort((a, b) => {
-		// compare name
-		if (a[1] < b[1]) {
-			return -1
-		} else if (a[1] === b[1]) {
-			return 0
-		}
-		return 1
-	})
 
 	let noSubmit = autoSubmitBlacklist.has(host)
 	let setHidden = hiddenWhitelist.has(host)
 
 	for (let i = 0; i < accts.length; i++) {
-		let tr = accountRow(accts[i], i, noSubmit, setHidden)
+		let tr = accountRow(accts[i], i, noSubmit, setHidden, accts.length > 2)
 		tb.appendChild(tr)
 	}
 	return true
@@ -260,7 +251,11 @@ function finishEditAccount() {
 	window.close()
 }
 
-function fillPassword(name, pw, noSubmit, setHidden) {
+function fillPassword(host, name, pw, noSubmit, setHidden, updateRecent) {
+	if (updateRecent) {
+		bg.updateRecent(host, name)
+	}
+	
 	currentTab().then(tab => {
 		let msg = {name: name, pw: pw}
 		if (!noSubmit) {

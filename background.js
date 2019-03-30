@@ -59,6 +59,8 @@ let state = {
 	version: 0,
 	// array of [host, username, pw]
 	sites: [],
+	// recent 2 accounts per domain. domain => [1st, 2nd]
+	recents: {},
 	// diffs since the last push.
 	// applying the same set of diffs should be idempotent.
 	// a diff is ["add", host, name, pw], ["remove", host, name, pw]
@@ -527,16 +529,77 @@ function updateAccount(diffs) {
 		.catch(e => {console.log("pushstate err"); console.log(e)})
 }
 
+function updateRecent(host, name) {
+	let dom = hostDomain(host)
+	let x = state.recents[dom]
+	if (!x) {
+		state.recents[dom] = [name]
+		return
+	}
+	if (x[0] === name) {
+		return
+	}
+	if (x.length === 1) {
+		x.push("") // resize
+	}
+	x[1] = x[0]
+	x[0] = name
+}
+
+function recentIndex(recents, name) {
+	if (!recents) {
+		return -1
+	}
+	for (let i = 0; i < recents.length; i++) {
+		if (name === recents[i]) {
+			return i
+		}
+	}
+	return -1
+}
+
 function matchSite(host) {
 	let accts = []
 	let dom = hostDomain(host)
 	let sfx = "." + dom
 	for (let i = 0; i < state.sites.length; i++) {
 		let x = state.sites[i]
-		if (x[0] == dom || x[0].endsWith(sfx)) {
+		if (x[0] === dom || x[0].endsWith(sfx)) {
 			accts.push(x)
 		}
 	}
+
+	let recents = state.recents[dom]
+	accts.sort((a, b) => {
+		// compare name
+		if (a[1] === b[1]) {
+			return 0
+		}
+		
+		let ia = recentIndex(recents, a[1])
+		let ib = recentIndex(recents, b[1])
+		if (ia === 0) {
+			return -1
+		}
+		if (ib === 0) {
+			return 1
+		}
+		if (ia >= 0 && ib >= 0) {
+			return ia - ib
+		}
+		if (ia >= 0) {
+			return -1
+		}
+		if (ib >= 0) {
+			return 1
+		}
+		
+		if (a[1] < b[1]) {
+			return -1
+		}
+		return 1
+	})
+
 	return accts
 }
 
