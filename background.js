@@ -1,9 +1,7 @@
 // TODO: 
 // - notes
-// - sort accounts by most recent use time
-// - few password combinations
-// - save sealed diffset in localstorage
 // - keep log of all changes in server
+// - save recents
 
 // notes:
 //
@@ -209,6 +207,10 @@ function logIn(pw) {
 		.then(() => {			
 			enableContextMenu()
 			onSignedIn()
+			
+			if (state.diffset.length > 0) {
+				return applyDiffs()
+			}
 		})
 		.catch(e => { console.log("login err"); console.log(e); }) // terminate promise chain
 }
@@ -284,10 +286,9 @@ function watchRemote() {
 			// apply diffs that are not committed.
 			if (state.diffset.length > 0) {
 				console.log(`apply ${state.diffset.length} diffs`)
-				applyDiffs()
 				// catch errors to make sure watchRemote is chained
-				return pushState()
-					.catch(e => {console.log("pushstate after pull err:"); console.log(e)})
+				return applyDiffs()
+					.catch(e => {console.log("applydiffs after pull err:"); console.log(e)})
 			}
 		})
 		.then(() => {
@@ -296,23 +297,28 @@ function watchRemote() {
 }
 
 function loadSealedState(key) {
-	return localGet("sites")
-		.then(x => unsealSites(key, x.sites))
-		.then(ss => {
+	return localGet(["sites", "diffset"])
+		.then(x => Promise.all([unsealObject(key, x.sites), unsealObject(key, x.diffset)]))
+		.then(x => {
 			//console.log("state unsealed")
+			let [ss, ds] = x
 			state.masterKey = key
-			state.sites = ss
+			state.sites = ss || []
+			state.diffset = ds || []
 		})
 }
 
-function unsealSites(key, s) {
+function unsealObject(key, s) {
+	if (!s) {
+		return Promise.resolve(undefined)
+	}
 	let x = JSON.parse(s)
 	//console.log("x"); console.log(x)
 	return unseal(key, x)
 		.then(b => JSON.parse(b2s(b)))
 }
 
-function sealSites(key, ss) {
+function sealObject(key, ss) {
 	let s = JSON.stringify(ss)
 	return seal(key, s2b(s))
 		.then(x => JSON.stringify(x))
@@ -330,31 +336,41 @@ function applyDiffs() {
 			break
 		}
 	}
+
+	return pushState()
 }
 
 // save state locally and push to remote
 function pushState() {
 	let ct
+	let ctds
 	// tie diffset with this push. retry would use the same end
 	let end = state.base + state.diffset.length
 	//console.log(`pushstate base:${state.base},end:${end}`)
-	return sealSites(state.masterKey, state.sites)
+	return Promise.all([state.sites, state.diffset]
+										 .map(x => sealObject(state.masterKey, x)))
 		.then(x => {
-			ct = x
-			return saveState(ct)
+			[ct, ctds] = x
+			return saveState(ct, ctds)
 		})
 		.then(() => pushRemote(state.backend, state.token, state.version, ct, end, 0))
 }
 
 // save state locally
-function saveState(ct) {
+function saveState(ct, ctds) {
 	let v = {
 		email: state.email,
 		mastersalt: bytes2hex(state.masterSalt),
 		version: state.version,
-		sites: ct
+		sites: ct,
+		diffset: ctds,
 	}
 	return localSet(v)
+}
+
+function saveDiffset() {
+	return sealObject(state.masterKey, state.diffset)
+		.then(ctds => localSet({diffset: ctds}))
 }
 
 // pullRemote:
@@ -400,7 +416,7 @@ function fetchRemote(url, k, tk, ver, wait, delay) {
 		.then(res => {
 			console.log(`fetchremote version:${res.version}`)
 			let x = JSON.parse(res.value)
-			return unsealSites(k, x.sites).then(ss => [res.version, x.sites, ss])
+			return unsealObject(k, x.sites).then(ss => [res.version, x.sites, ss])
 		})
 		.catch(e => {
 			if (!retryOnErr) {
@@ -447,6 +463,7 @@ function pushRemote(url, tk, ver, ct, end, delay) {
 				console.log(`pushed version:${res.version}, truncate diffset from ${state.base} to ${end}`)
 				state.diffset.splice(0, end - state.base)
 				state.base = end
+				return saveDiffset()
 			} else {
 				console.log(`diffset:${end} of version:${res.version} is superseded`)
 			}
@@ -669,6 +686,8 @@ function handleMessage(req, sender, sendResponse) {
 		console.log("unknown req"); console.log(req)
 		break
 	}
+	// to avoid "message port closed before a response was received"?
+	return true
 }
 
 function enableContextMenu() {

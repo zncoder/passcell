@@ -104,7 +104,7 @@ function hydrateSitePage(site) {
 }
 
 function newAcctNew() {
-	newPw("newacct_pw")
+	let pw = newPw("newacct_pw")
 	bg.setLastPw(docId("newacct_host").value, docId("newacct_name").value, pw)
 	
 	currentTab().then(tab => {
@@ -127,6 +127,8 @@ function newPw(id) {
 		s += ", with special char"
 	}
 	showStatus(s)
+
+	return pw
 }
 
 // <tr class="acct_row">
