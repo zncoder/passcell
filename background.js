@@ -129,13 +129,14 @@ function getEmail() {
 // https://github.com/diafygi/webcrypto-examples
 
 function loadPlaintextState() {
-	return localGet(["email", "mastersalt", "version"])
+	return localGet(["email", "mastersalt", "version", "recents"])
 		.then(x => {
 			//console.log("loadmastersalt"); console.log(x)
 			if (x.mastersalt) {
 				state.masterSalt = hex2bytes(x.mastersalt)
 				state.email = x.email
 				state.version = x.version
+				state.recents = x.recents || {}
 			}
 		})
 		.catch(e => { console.log("loadplaintextstate err"); console.log(e); })
@@ -561,6 +562,8 @@ function updateRecent(host, name) {
 	}
 	x[1] = x[0]
 	x[0] = name
+
+	return localSet({recents: state.recents})
 }
 
 function recentIndex(recents, name) {
