@@ -133,8 +133,8 @@ function newPw(id) {
 // <tr class="acct_row">
 // <td class="copy_btn"><span id="name_{id}">{name}</span></td>
 // <td class="copy_btn"><img id="pwimg_{id}" src="icons/pw.png" /></td>
-// <td><img id="autologinimg_{id}" src="icons/autologin.png" /></td>
-// <td><img id="fillimg_{id}" src="icons/fill.png" /></td>
+// <td><img id="loginimg_{id}" src="icons/login.png" /></td>
+// <td><input type="checkbox" id="autologin_{id}" checked></td>
 // <td><img id="editimg_{id}" src="icons/edit.png" /></td>
 // </tr>
 function accountRow(acct, id, noSubmit, setHidden, updateRecent) {
@@ -146,8 +146,8 @@ function accountRow(acct, id, noSubmit, setHidden, updateRecent) {
 	let nodes = new Array(4)
 	nodes[0] = `<td class="copy_btn"><span id="name_${id}">${name}</span></td>`
 	nodes[1] = `<td class="copy_btn"><img id="pwimg_${id}" src="icons/pw.png" /></td>`
-	nodes[2] = `<td><img id="autologinimg_${id}" src="icons/autologin.png" /></td>`
-	nodes[3] = `<td><img id="fillimg_${id}" src="icons/fill.png" /></td>`
+	nodes[2] = `<td><img id="loginimg_${id}" src="icons/login.png" /></td>`
+	nodes[3] = `<td><input type="checkbox" id="autologin_${id}"></td>`
 	nodes[4] = `<td><img id="editimg_${id}" src="icons/edit.png" /></td>`
 	tr.innerHTML = nodes.join("\n")
 
@@ -161,16 +161,16 @@ function accountRow(acct, id, noSubmit, setHidden, updateRecent) {
 	el.addEventListener("mouseout", () => showStatus(""))
 	el.addEventListener("click", () => clip(pw))
 
-	el = tr.querySelector(`#autologinimg_${id}`)
+	let autoel = tr.querySelector(`#autologin_${id}`)
+	autoel.addEventListener("mouseover", () => showStatus("check to auto login"))
+	autoel.addEventListener("mouseout", () => showStatus(""))
+	autoel.checked = !noSubmit
+
+	el = tr.querySelector(`#loginimg_${id}`)
 	el.addEventListener("mouseover", () => showStatus("click to log in"))
 	el.addEventListener("mouseout", () => showStatus(""))
-	el.addEventListener("click", () => fillPassword(host, name, pw, noSubmit, setHidden, updateRecent))
+	el.addEventListener("click", () => fillPassword(host, name, pw, autoel, setHidden, updateRecent))
 	
-	el = tr.querySelector(`#fillimg_${id}`)
-	el.addEventListener("mouseover", () => showStatus("click to fill form"))
-	el.addEventListener("mouseout", () => showStatus(""))
-	el.addEventListener("click", () => fillPassword(host, name, pw, true, setHidden, updateRecent))
-
 	el = tr.querySelector(`#editimg_${id}`)
 	el.addEventListener("mouseover", () => showStatus("click to edit account"))
 	el.addEventListener("mouseout", () => showStatus(""))
@@ -252,15 +252,15 @@ function finishEditAccount() {
 	window.close()
 }
 
-function fillPassword(host, name, pw, noSubmit, setHidden, updateRecent) {
+function fillPassword(host, name, pw, autoel, setHidden, updateRecent) {
 	if (updateRecent) {
 		bg.updateRecent(host, name)
 	}
-	
+
 	currentTab()
 		.then(tab => {
 			let msg = {name: name, pw: pw}
-			if (!noSubmit) {
+			if (autoel.checked) {
 				msg.action = "submit"
 			}
 			if (setHidden) {

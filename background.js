@@ -1,6 +1,8 @@
 // TODO: 
 // - notes
 // - keep log of all changes in server
+// - search a site
+// - get form confirmed from executeScript
 
 // notes:
 //
