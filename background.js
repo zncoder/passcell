@@ -1,7 +1,6 @@
 // TODO: 
 // - notes
 // - keep log of all changes in server
-// - save recents
 
 // notes:
 //
@@ -650,10 +649,6 @@ function resetSites(sts) {
 		.catch(e => { console.log("resetsites err"); console.log(e); })
 }
 
-function startImportSites() {
-	chrome.tabs.executeScript({file: "page-importpw.js"})
-}
-
 function importSites(ss) {
 	//console.log("importsites"); console.log(ss)
 	for (let x of ss) {
@@ -677,10 +672,6 @@ function handleNewSite(req, sendResponse) {
 function handleMessage(req, sender, sendResponse) {
 	//console.log("got req"); console.log(req)
 	switch (req.action) {
-	case "import":
-		handleImportSites(req.sites, sendResponse)
-		break
-
 	case "new":
 		handleNewSite(req, sendResponse)
 		break
@@ -696,11 +687,6 @@ function handleMessage(req, sender, sendResponse) {
 function enableContextMenu() {
 	chrome.runtime.onMessage.addListener(handleMessage)
 
-	chrome.contextMenus.create({
-		id: "import-sites",
-		title: "Import Sites",
-		contexts: ["browser_action"]
-	})
 	chrome.contextMenus.create({
 		id: "import-lastpass-csv",
 		title: "Import LastPass Exported CSV",
@@ -718,9 +704,6 @@ function enableContextMenu() {
 	})
 	chrome.contextMenus.onClicked.addListener((info, tab) => {
 		switch (info.menuItemId) {
-		case "import-sites":
-			startImportSites()
-			break
 		case "import-lastpass-csv":
 			chrome.tabs.create({"url": "/page-importlastpasscsv.html"})
 			break

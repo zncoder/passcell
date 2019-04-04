@@ -237,6 +237,12 @@ function currentTab() {
 	})
 }
 
+function sendTabMessage(tab, msg) {
+	return new Promise(resolve => {
+		chrome.tabs.sendMessage(tab.id, msg, resp => resolve(resp))
+	})
+}
+
 function getBackgroundPage() {
 	return new Promise(resolve => chrome.runtime.getBackgroundPage(bg => resolve(bg)))
 }

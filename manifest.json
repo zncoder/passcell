@@ -1,6 +1,6 @@
 {
   "name": "PassCell",
-  "version": "1.6.2",
+  "version": "1.7.1",
   "manifest_version": 2,
   "description": "Generate and manage passwords",
   "icons": {
@@ -9,18 +9,12 @@
 	"permissions": [
 		"storage",
 		"activeTab",
+		"<all_urls>",
 		"contextMenus"
 	],
   "background": {
     "scripts": [ "common.js", "background.js" ]
   },
-	"content_scripts": [
-		{
-			"matches": ["http://*/*", "https://*/*"],
-			"js": ["page-fillpw.js"],
-			"all_frames": true
-		}
-	],
 	"browser_action": {
 		"browser_style": true,
 		"default_popup": "popup.html",

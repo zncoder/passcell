@@ -1,7 +1,21 @@
-const bgColor = "#FDFF47"
-const valueMark = "_value_set_by_furyomaiifndduzn_"
+// this script is injected by popup.
+// inited is set to true on first injection.
+var inited,
+		bgColor,
+		valueMark
 
-chrome.runtime.onMessage.addListener(handleMessage)
+// need <all_urls> permission to deal with cross-origin iframes
+function init() {
+	if (inited) {
+		return
+	}
+	inited = true
+	console.log("page-fillpw inited")
+
+	bgColor = "#FDFF47"
+	valueMark = "_value_set_by_furyomaiifndduzn_"
+	chrome.runtime.onMessage.addListener(handleMessage)
+}
 
 function handleMessage(req, sender, sendResponse) {
 	let state = initState()
@@ -404,3 +418,5 @@ function locatePwField() {
 	}
 	return null
 }
+
+init()

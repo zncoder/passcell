@@ -106,16 +106,15 @@ function hydrateSitePage(site) {
 function newAcctNew() {
 	let pw = newPw("newacct_pw")
 	bg.setLastPw(docId("newacct_host").value, docId("newacct_name").value, pw)
-	
-	currentTab().then(tab => {
-		chrome.tabs.sendMessage(tab.id, {pw: pw, action: "new"}, resp => {
+	currentTab()
+		.then(tab => sendTabMessage(tab, {pw: pw, action: "new"}))
+		.then(resp => {
 			//console.log("new resp"); console.log(resp)
 			if (resp && resp.name && resp.name.length > 0) {
 				bg.setLastPw("", resp.name, "")
 				docId("newacct_name").value = resp.name
 			}
 		})
-	})
 }
 
 function newPw(id) {
@@ -258,21 +257,24 @@ function fillPassword(host, name, pw, noSubmit, setHidden, updateRecent) {
 		bg.updateRecent(host, name)
 	}
 	
-	currentTab().then(tab => {
-		let msg = {name: name, pw: pw}
-		if (!noSubmit) {
-			msg.action = "submit"
-		}
-		if (setHidden) {
-			msg.hidden = true
-		}
-		chrome.tabs.sendMessage(tab.id, msg, () => window.close())
-	})
+	currentTab()
+		.then(tab => {
+			let msg = {name: name, pw: pw}
+			if (!noSubmit) {
+				msg.action = "submit"
+			}
+			if (setHidden) {
+				msg.hidden = true
+			}
+			return sendTabMessage(tab, msg)
+		})
+		.then(window.close)
 }
 
 function fillUsername() {
 	let name = docId("newacct_name").value
-	currentTab().then(tab => chrome.tabs.sendMessage(tab.id, {action: "setname", name: name}))
+	currentTab()
+		.then(tab => sendTabMessage(tab, {action: "setname", name: name}))
 }
 
 function signUp(ev) {
@@ -336,7 +338,7 @@ function cancelNewAccount(host) {
 // https://stackoverflow.com/questions/400212/how-do-i-copy-to-the-clipboard-in-javascript
 function clip(t) {
 	let ta = document.createElement("textarea")
-	ta.textContent = t
+	ta.value = t
 	ta.style.position = "fixed"
 	document.body.appendChild(ta)
 	ta.select()
@@ -348,3 +350,7 @@ function clip(t) {
 		document.body.removeChild(ta)
 	}
 }
+
+// inject page-fillpw.js
+currentTab()
+	.then(tab => chrome.tabs.executeScript(tab.id, {file: "page-fillpw.js", allFrames: true}))
