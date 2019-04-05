@@ -1,10 +1,5 @@
 let bg = null
 
-let autoSubmitBlacklist = new Set([
-	"login.fidelity.com",
-	"online.citi.com",
-])
-
 let hiddenWhitelist = new Set([
 	"online.citi.com",
 ])
@@ -77,6 +72,12 @@ function showNewAccount() {
 
 function hydrateSitePage(site) {
 	let host = site[1]
+
+	let autologin = docId("autologin")
+	autologin.checked = bg.hostAutoLogin(host)
+	autologin.addEventListener("mouseover", () => showStatus("check to auto log in"))
+	autologin.addEventListener("mouseout", () => showStatus(""))
+
 	if (hydrateOldAccounts(host, docId("oldaccts"))) {
 		show("#oldaccts_sec")
 		show("#status_sec")
@@ -134,10 +135,9 @@ function newPw(id) {
 // <td class="copy_btn"><span id="name_{id}">{name}</span></td>
 // <td class="copy_btn"><img id="pwimg_{id}" src="icons/pw.png" /></td>
 // <td><img id="loginimg_{id}" src="icons/login.png" /></td>
-// <td><input type="checkbox" id="autologin_{id}" checked></td>
 // <td><img id="editimg_{id}" src="icons/edit.png" /></td>
 // </tr>
-function accountRow(acct, id, noSubmit, setHidden, updateRecent) {
+function accountRow(acct, id, setHidden, updateRecent) {
 	let [host, name, pw] = acct
 
 	let tr = document.createElement("tr")
@@ -147,8 +147,7 @@ function accountRow(acct, id, noSubmit, setHidden, updateRecent) {
 	nodes[0] = `<td class="copy_btn"><span id="name_${id}">${name}</span></td>`
 	nodes[1] = `<td class="copy_btn"><img id="pwimg_${id}" src="icons/pw.png" /></td>`
 	nodes[2] = `<td><img id="loginimg_${id}" src="icons/login.png" /></td>`
-	nodes[3] = `<td><input type="checkbox" id="autologin_${id}"></td>`
-	nodes[4] = `<td><img id="editimg_${id}" src="icons/edit.png" /></td>`
+	nodes[3] = `<td><img id="editimg_${id}" src="icons/edit.png" /></td>`
 	tr.innerHTML = nodes.join("\n")
 
 	let el = tr.querySelector(`#name_${id}`)
@@ -161,15 +160,12 @@ function accountRow(acct, id, noSubmit, setHidden, updateRecent) {
 	el.addEventListener("mouseout", () => showStatus(""))
 	el.addEventListener("click", () => clip(pw))
 
-	let autoel = tr.querySelector(`#autologin_${id}`)
-	autoel.addEventListener("mouseover", () => showStatus("check to auto login"))
-	autoel.addEventListener("mouseout", () => showStatus(""))
-	autoel.checked = !noSubmit
-
 	el = tr.querySelector(`#loginimg_${id}`)
-	el.addEventListener("mouseover", () => showStatus("click to log in"))
+	el.addEventListener("mouseover", () => {
+		showStatus(docId("autologin").checked ? "click to log in" : "click to fill out form")
+	})
 	el.addEventListener("mouseout", () => showStatus(""))
-	el.addEventListener("click", () => fillPassword(host, name, pw, autoel, setHidden, updateRecent))
+	el.addEventListener("click", () => fillPassword(host, name, pw, setHidden, updateRecent))
 	
 	el = tr.querySelector(`#editimg_${id}`)
 	el.addEventListener("mouseover", () => showStatus("click to edit account"))
@@ -185,11 +181,10 @@ function hydrateOldAccounts(host, tb) {
 		return false
 	}
 
-	let noSubmit = autoSubmitBlacklist.has(host)
 	let setHidden = hiddenWhitelist.has(host)
 
 	for (let i = 0; i < accts.length; i++) {
-		let tr = accountRow(accts[i], i, noSubmit, setHidden, accts.length > 2)
+		let tr = accountRow(accts[i], i, setHidden, accts.length > 2)
 		tb.appendChild(tr)
 	}
 	return true
@@ -252,15 +247,14 @@ function finishEditAccount() {
 	window.close()
 }
 
-function fillPassword(host, name, pw, autoel, setHidden, updateRecent) {
-	if (updateRecent) {
-		bg.updateRecent(host, name)
-	}
+function fillPassword(host, name, pw, setHidden, updateRecent) {
+	let autologin = docId("autologin")
+	bg.accountSelected(host, name, updateRecent, autologin.checked)
 
 	currentTab()
 		.then(tab => {
 			let msg = {name: name, pw: pw}
-			if (autoel.checked) {
+			if (autologin.checked) {
 				msg.action = "submit"
 			}
 			if (setHidden) {
@@ -353,4 +347,11 @@ function clip(t) {
 
 // inject page-fillpw.js
 currentTab()
-	.then(tab => chrome.tabs.executeScript(tab.id, {file: "page-fillpw.js", allFrames: true}))
+	.then(tab => {
+		chrome.tabs.executeScript(tab.id, {file: "page-fillpw.js", allFrames: true}, result => {
+			if (chrome.runtime.lastError) {
+				console.log("inject page-fillpw err:" + chrome.runtime.lastError.message)
+				return
+			}
+		})
+	})

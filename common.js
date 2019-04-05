@@ -239,7 +239,13 @@ function currentTab() {
 
 function sendTabMessage(tab, msg) {
 	return new Promise(resolve => {
-		chrome.tabs.sendMessage(tab.id, msg, resp => resolve(resp))
+		chrome.tabs.sendMessage(tab.id, msg, resp => {
+			if (chrome.runtime.lastError) {
+				console.log("sendtabmessage err:" + chrome.runtime.lastError.message)
+				return
+			}
+			resolve(resp)
+		})
 	})
 }
 

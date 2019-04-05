@@ -10,7 +10,7 @@ body {
 .btn {
 		border: 0px;
 		background-color: lightskyblue;
-		border-radius: 2px;
+		border-radius: 6px;
 		margin: 2px;
 		font-size: 1em;
 }
@@ -42,6 +42,7 @@ body {
 .row {
 		display: flex;
 		flex-direction: row;
+		align-items: center;
 }
 
 .row_cell {

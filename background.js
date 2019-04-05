@@ -60,6 +60,8 @@ let state = {
 	sites: [],
 	// recent 2 accounts per domain. domain => [1st, 2nd]
 	recents: {},
+	// noautologin choice per domain.
+	noautologins: new Set(),
 	// diffs since the last push.
 	// applying the same set of diffs should be idempotent.
 	// a diff is ["add", host, name, pw], ["remove", host, name, pw]
@@ -130,7 +132,7 @@ function getEmail() {
 // https://github.com/diafygi/webcrypto-examples
 
 function loadPlaintextState() {
-	return localGet(["email", "mastersalt", "version", "recents"])
+	return localGet(["email", "mastersalt", "version", "recents", "noautologins"])
 		.then(x => {
 			//console.log("loadmastersalt"); console.log(x)
 			if (x.mastersalt) {
@@ -138,6 +140,7 @@ function loadPlaintextState() {
 				state.email = x.email
 				state.version = x.version
 				state.recents = x.recents || {}
+				state.noautologins = new Set(x.noautologins || [])
 			}
 		})
 		.catch(e => { console.log("loadplaintextstate err"); console.log(e); })
@@ -548,23 +551,43 @@ function updateAccount(diffs) {
 		.catch(e => {console.log("pushstate err"); console.log(e)})
 }
 
-function updateRecent(host, name) {
+function accountSelected(host, name, updateRecent, autologin) {
+	let change = {}
 	let dom = hostDomain(host)
-	let x = state.recents[dom]
-	if (!x) {
-		state.recents[dom] = [name]
-		return
+	if (autologin === state.noautologins.has(dom)) {
+		if (autologin) {
+			state.noautologins.delete(dom)
+		} else {
+			state.noautologins.add(dom)
+		}
+		change.noautologins = Array.from(state.noautologins)
 	}
-	if (x[0] === name) {
-		return
-	}
-	if (x.length === 1) {
-		x.push("") // resize
-	}
-	x[1] = x[0]
-	x[0] = name
 
-	return localSet({recents: state.recents})
+	if (updateRecent) {
+		let x = state.recents[dom]
+		if (!x || x[0] !== name) {
+			if (!x) {
+				state.recents[dom] = [name]
+			} else {
+				if (x.length === 1) {
+					x.push("") // resize
+				}
+				x[1] = x[0]
+				x[0] = name
+			}
+			change.recents = state.recents
+		}
+	}
+
+	if (Object.getOwnPropertyNames(change).length == 0) {
+		return Promise.resolve(true)
+	}
+	return localSet(change)
+}
+
+function hostAutoLogin(host) {
+	let dom = hostDomain(host)
+	return !state.noautologins.has(dom)
 }
 
 function recentIndex(recents, name) {
