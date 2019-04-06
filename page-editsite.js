@@ -10,7 +10,7 @@ getBackgroundPage()
 const acctTmpl = '<td><span id="host-{id}">{host}</span></td>\n\
 <td><span id="name-{id}">{name}</span></td>\n\
 <td><span id="pw-sp-{id}">******</span><input type="hidden" value="{pw}" id="pw-{id}"></td>\n\
-<td><img id="editimg_{id}" src="icons/edit.png" />&nbsp;&nbsp;<img id="delimg_{id}" src="icons/delete.png" /></td>'
+<td><img id="editimg_{id}" src="icons/edit.svg" />&nbsp;&nbsp;<img id="delimg_{id}" src="icons/delete.svg" /></td>'
 
 function hydrateSites() {
 	let sites = bg.getSites()
@@ -49,7 +49,7 @@ function toggleEdit(i) {
 		let pwsp = docId("pw-sp-"+i)
 		pwsp.contentEditable = "true"
 		pwsp.innerText = docId("pw-"+i).value
-		docId("editimg_"+i).src = "icons/ok.png"
+		docId("editimg_"+i).src = "icons/ok.svg"
 	} else {
 		docId("row-"+i).style.backgroundColor = ""
 		docId("host-"+i).contentEditable = "false"
@@ -58,7 +58,7 @@ function toggleEdit(i) {
 		pwsp.contentEditable = "false"
 		docId("pw-"+i).value = pwsp.innerText
 		pwsp.innerText = "******"
-		docId("editimg_"+i).src = "icons/edit.png"
+		docId("editimg_"+i).src = "icons/edit.svg"
 	}
 }
 
