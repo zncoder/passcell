@@ -74,8 +74,11 @@ function hydrateSitePage(site) {
 	let host = site[1]
 
 	let autologin = docId("autologin")
-	autologin.checked = bg.hostAutoLogin(host)
-	autologin.addEventListener("mouseover", () => showStatus("check to auto log in"))
+	setAutoLoginState(autologin, bg.hostAutoLogin(host))
+	autologin.addEventListener("click", () => {
+		setAutoLoginState(autologin, autologin.getAttribute("mystate") === "0")
+	})
+	autologin.addEventListener("mouseover", () => showAutoLoginStatus(autologin))
 	autologin.addEventListener("mouseout", () => showStatus(""))
 
 	if (hydrateOldAccounts(host, docId("oldaccts"))) {
@@ -102,6 +105,22 @@ function hydrateSitePage(site) {
 	docId("editacct_new").addEventListener("click", newAcctEdit)
 	docId("editacct_remove").addEventListener("click", removeEditAccount)
 	docId("editacct_cancel").addEventListener("click", finishEditAccount)
+}
+
+function setAutoLoginState(autologin, enabled) {
+	if (enabled) {
+		autologin.setAttribute("mystate", "1")
+		autologin.src = "icons/toggleon.svg"
+	} else {
+		autologin.setAttribute("mystate", "0")
+		autologin.src = "icons/toggleoff.svg"
+	}
+	showAutoLoginStatus(autologin)
+}
+
+function showAutoLoginStatus(autologin) {
+	showStatus(autologin.getAttribute("mystate") === "0" ?
+						 "click to enable auto login" : "click to disable auto login")
 }
 
 function newAcctNew() {
@@ -162,7 +181,8 @@ function accountRow(acct, id, setHidden, updateRecent) {
 
 	el = tr.querySelector(`#loginimg_${id}`)
 	el.addEventListener("mouseover", () => {
-		showStatus(docId("autologin").checked ? "click to log in" : "click to fill out form")
+		showStatus(docId("autologin").getAttribute("mystate") === "1" ?
+							 "click to log in" : "click to fill out form")
 	})
 	el.addEventListener("mouseout", () => showStatus(""))
 	el.addEventListener("click", () => fillPassword(host, name, pw, setHidden, updateRecent))
@@ -248,13 +268,13 @@ function finishEditAccount() {
 }
 
 function fillPassword(host, name, pw, setHidden, updateRecent) {
-	let autologin = docId("autologin")
-	bg.accountSelected(host, name, updateRecent, autologin.checked)
+	let autologin = docId("autologin").getAttribute("mystate") === "1"
+	bg.accountSelected(host, name, updateRecent, autologin)
 
 	currentTab()
 		.then(tab => {
 			let msg = {name: name, pw: pw}
-			if (autologin.checked) {
+			if (autologin) {
 				msg.action = "submit"
 			}
 			if (setHidden) {
