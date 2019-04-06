@@ -17,14 +17,7 @@ function loadPage() {
 
 	// already opened
 	if (bg.opened()) {
-		show("#site_sec")
-		hide("#oldaccts_sec")
-		show("#shownewacct_sec")
-		hide("#status_sec")
-		hide("#newacctdetail_sec")
-		hide("#editacctdetail_sec")
-		docId("shownewacct_acct").addEventListener("click", showNewAccount)
-		currentTab().then(tab => hydrateSitePage(tidyUrl(tab.url)))
+		showSites()
 		return
 	}
 
@@ -36,8 +29,24 @@ function loadPage() {
 
 	// choose signup or login
 	show("#choose_sec")
-	docId("do_signup_btn").addEventListener("click", showSignUp)
-	docId("do_login_btn").addEventListener("click", showLogIn)
+	let el = docId("do_signup_btn")
+	el.addEventListener("click", showSignUp)
+	setTooltip(el, () => showStatus("sign up new account"))
+
+	el = docId("do_login_btn")
+	el.addEventListener("click", showLogIn)
+	setTooltip(el, () => showStatus("log in to your account")
+}
+
+function showSites() {
+	hide(".page")
+	hide("#oldaccts_sec")
+	hide("#newacctdetail_sec")
+	hide("#editacctdetail_sec")
+	show("#site_sec")
+	show("#shownewacct_sec")
+	docId("shownewacct_acct").addEventListener("click", showNewAccount)
+	currentTab().then(tab => hydrateSitePage(tidyUrl(tab.url)))
 }
 
 function showSignUp() {
@@ -75,15 +84,11 @@ function hydrateSitePage(site) {
 
 	let autologin = docId("autologin")
 	setAutoLoginState(autologin, bg.hostAutoLogin(host))
-	autologin.addEventListener("click", () => {
-		setAutoLoginState(autologin, autologin.getAttribute("mystate") === "0")
-	})
-	autologin.addEventListener("mouseover", () => showAutoLoginStatus(autologin))
-	autologin.addEventListener("mouseout", () => showStatus(""))
+	autologin.addEventListener("click", () => setAutoLoginState(autologin, !autoLoginEnabled()))
+	setTooltip(autologin, () => showAutoLoginStatus(autologin))
 
 	if (hydrateOldAccounts(host, docId("oldaccts"))) {
 		show("#oldaccts_sec")
-		show("#status_sec")
 	}
 
 	let lastPw = bg.getLastPw()
@@ -105,22 +110,23 @@ function hydrateSitePage(site) {
 	docId("editacct_new").addEventListener("click", newAcctEdit)
 	docId("editacct_remove").addEventListener("click", removeEditAccount)
 	docId("editacct_cancel").addEventListener("click", finishEditAccount)
+
+	showStatus("")
 }
 
-function setAutoLoginState(autologin, enabled) {
-	if (enabled) {
+function setAutoLoginState(autologin, enable) {
+	if (enable) {
 		autologin.setAttribute("mystate", "1")
 		autologin.src = "icons/toggleon.svg"
 	} else {
 		autologin.setAttribute("mystate", "0")
 		autologin.src = "icons/toggleoff.svg"
 	}
-	showAutoLoginStatus(autologin)
+	showAutoLoginStatus()
 }
 
-function showAutoLoginStatus(autologin) {
-	showStatus(autologin.getAttribute("mystate") === "0" ?
-						 "click to enable auto login" : "click to disable auto login")
+function showAutoLoginStatus() {
+	showStatus(autoLoginEnabled() ? "click to disable auto login" : "click to enable auto login")
 }
 
 function newAcctNew() {
@@ -170,29 +176,27 @@ function accountRow(acct, id, setHidden, updateRecent) {
 	tr.innerHTML = nodes.join("\n")
 
 	let el = tr.querySelector(`#name_${id}`)
-	el.addEventListener("mouseover", () => showStatus("click to copy name"))
-	el.addEventListener("mouseout", () => showStatus(""))
+	setTooltip(el, () => showStatus("click to copy name"))
 	el.addEventListener("click", () => clip(name))
 
 	el = tr.querySelector(`#pwimg_${id}`)
-	el.addEventListener("mouseover", () => showStatus("click to copy password"))
-	el.addEventListener("mouseout", () => showStatus(""))
+	setTooltip(el, () => showStatus("click to copy password"))
 	el.addEventListener("click", () => clip(pw))
 
 	el = tr.querySelector(`#loginimg_${id}`)
-	el.addEventListener("mouseover", () => {
-		showStatus(docId("autologin").getAttribute("mystate") === "1" ?
-							 "click to log in" : "click to fill out form")
-	})
-	el.addEventListener("mouseout", () => showStatus(""))
+	setTooltip(el, () => showStatus(autoLoginEnabled() ? "click to log in" : "click to fill out form"))
 	el.addEventListener("click", () => fillPassword(host, name, pw, setHidden, updateRecent))
 	
 	el = tr.querySelector(`#editimg_${id}`)
-	el.addEventListener("mouseover", () => showStatus("click to edit account"))
-	el.addEventListener("mouseout", () => showStatus(""))
+	setTooltip(el, () => showStatus("click to edit account"))
 	el.addEventListener("click", () => editAccount(host, name, pw))
 
 	return tr
+}
+
+function setTooltip(el, cb) {
+	el.addEventListener("mouseover", cb)
+	el.addEventListener("mouseout", () => showStatus(""))
 }
 
 function hydrateOldAccounts(host, tb) {
@@ -267,8 +271,12 @@ function finishEditAccount() {
 	window.close()
 }
 
+function autoLoginEnabled() {
+	docId("autologin").getAttribute("mystate") === "1"
+}
+
 function fillPassword(host, name, pw, setHidden, updateRecent) {
-	let autologin = docId("autologin").getAttribute("mystate") === "1"
+	let autologin = autoLoginEnabled()
 	bg.accountSelected(host, name, updateRecent, autologin)
 
 	currentTab()
@@ -294,7 +302,8 @@ function fillUsername() {
 function signUp(ev) {
 	ev.preventDefault()
 	let email = docId("signup_email").value
-	let pw = docId("signup_pw").value
+	let el = docId("signup_pw")
+	let pw = el.value
 	if (empty(email) || empty(pw) || docId("signup_pw_m").value !== pw) {
 		console.log("empty or mismatched pw")
 		return
@@ -302,11 +311,17 @@ function signUp(ev) {
 	
 	bg.signUp(email, pw)
 		.then(() => loadPage())
+ 		.catch(e => {
+			console.log("signup err"); console.log(e);
+			el.select();
+			showStatus("signup error")
+		})
 }
 
 function logIn(ev) {
 	ev.preventDefault()
-	let pw = docId("login_pw").value
+	let el = docId("login_pw")
+	let pw = el.value
 	if (empty(pw)) {
 		console.log("empty pw")
 		return
@@ -314,12 +329,18 @@ function logIn(ev) {
 
 	bg.logIn(pw)
 		.then(() => loadPage())
+		.catch(e => {
+			console.log("login err"); console.log(e)
+			el.select()
+			showStatus("login error")
+		})					 
 }
 
 function recoverLogIn(ev) {
 	ev.preventDefault()
 	let email = docId("login_email").value
-	let pw = docId("login_pw").value
+	let el = docId("login_pw")
+	let pw = el.value
 	if (empty(email) || empty(pw)) {
 		console.log("empty email or pw")
 		return
@@ -327,6 +348,11 @@ function recoverLogIn(ev) {
 
 	bg.recoverLogIn(email, pw)
 		.then(() => loadPage())
+		.catch(e => {
+			console.log("recoverlogin err"); console.log(e)
+			el.select()
+			showStatus("recover login error")
+		})
 }
 
 function saveNewAccount(ev) {

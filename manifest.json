@@ -1,6 +1,6 @@
 {
   "name": "PassCell",
-  "version": "1.8.3",
+  "version": "1.8.4",
   "manifest_version": 2,
   "description": "Generate and manage passwords",
   "icons": {

@@ -176,7 +176,6 @@ function signUp(em, pw) {
 			onSignedIn()
 			return ver
 		})
- 		.catch(e => { console.log("signup err"); console.log(e); }) // terminate promise chain
 }
 
 function onSignedIn() {
@@ -217,7 +216,6 @@ function logIn(pw) {
 				return applyDiffs()
 			}
 		})
-		.catch(e => { console.log("login err"); console.log(e); }) // terminate promise chain
 }
 
 function newTokener(url, em, pw, salt) {
@@ -269,7 +267,6 @@ function recoverLogIn(em, pw) {
 			enableContextMenu()
 			onSignedIn()
 		})
-		.catch(e => { console.log("recoverlogin err"); console.log(e); })
 }
 
 function preLogInRemote(url, em) {
