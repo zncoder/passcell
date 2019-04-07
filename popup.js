@@ -190,7 +190,7 @@ function accountRow(acct, id, setHidden, updateRecent) {
 	setTooltip(el, () => showStatus("click to copy password"))
 	el.addEventListener("click", () => {
 		clip(pw)
-		showStatus("password is copied to clipboard for 10s")
+		showStatus("password is copied to clipboard for 30s")
 		bg.clearClipPassword(30*1000)
 	})
 
