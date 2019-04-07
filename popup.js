@@ -35,10 +35,14 @@ function loadPage() {
 
 	el = docId("do_login_btn")
 	el.addEventListener("click", showLogIn)
-	setTooltip(el, () => showStatus("log in to your account")
+	setTooltip(el, () => showStatus("log in to your account"))
 }
 
 function showSites() {
+	if (bg.isChrome) {
+		docId("oldaccts_sec").classList.add("oldaccts_chrome")
+	}
+
 	hide(".page")
 	hide("#oldaccts_sec")
 	hide("#newacctdetail_sec")
@@ -272,7 +276,7 @@ function finishEditAccount() {
 }
 
 function autoLoginEnabled() {
-	docId("autologin").getAttribute("mystate") === "1"
+	return docId("autologin").getAttribute("mystate") === "1"
 }
 
 function fillPassword(host, name, pw, setHidden, updateRecent) {

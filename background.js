@@ -39,6 +39,8 @@ const localBackend = "http://localhost:10008"
 const prodBackend = "https://54.67.41.163.sslip.io:10008"
 const postTimeout = 10000 // 10s
 
+var isChrome = navigator.appVersion.indexOf(" Chrome/") !== -1
+
 let state = {
 	// masterKey is initialized from pw during signup or login.
 	// it is never saved.

@@ -49,8 +49,12 @@ body {
 		flex: 1;
 }
 
+.oldaccts_chrome {
+		max-height: 80vh;
+		overflow-y: auto;
+}
+
 #oldaccts {
-		width: 100%;
 		border-style: solid none solid none;
 		border-width: thin;
 }
