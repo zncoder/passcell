@@ -673,6 +673,13 @@ function resetSites(sts) {
 		.catch(e => { console.log("resetsites err"); console.log(e); })
 }
 
+function clearClipPassword(to) {
+	wait(to).then(() => {
+		console.log("clear password")
+		clip("passcell password cleared")
+	})
+}
+
 function importSites(ss) {
 	//console.log("importsites"); console.log(ss)
 	for (let x of ss) {

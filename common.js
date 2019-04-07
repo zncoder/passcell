@@ -249,6 +249,22 @@ function sendTabMessage(tab, msg) {
 	})
 }
 
+// https://stackoverflow.com/questions/400212/how-do-i-copy-to-the-clipboard-in-javascript
+function clip(t) {
+	let ta = document.createElement("textarea")
+	ta.value = t
+	ta.style.position = "fixed"
+	document.body.appendChild(ta)
+	ta.select()
+	try {
+		document.execCommand("copy")
+	} catch (e) {
+		console.log("copy to clipboard err"); console.log(e)
+	} finally {
+		document.body.removeChild(ta)
+	}
+}
+
 function getBackgroundPage() {
 	return new Promise(resolve => chrome.runtime.getBackgroundPage(bg => resolve(bg)))
 }

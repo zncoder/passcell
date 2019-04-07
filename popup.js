@@ -181,11 +181,18 @@ function accountRow(acct, id, setHidden, updateRecent) {
 
 	let el = tr.querySelector(`#name_${id}`)
 	setTooltip(el, () => showStatus("click to copy name"))
-	el.addEventListener("click", () => clip(name))
+	el.addEventListener("click", () => {
+		clip(name)
+		showStatus("name is copied to clipboard")
+	})
 
 	el = tr.querySelector(`#pwimg_${id}`)
 	setTooltip(el, () => showStatus("click to copy password"))
-	el.addEventListener("click", () => clip(pw))
+	el.addEventListener("click", () => {
+		clip(pw)
+		showStatus("password is copied to clipboard for 10s")
+		bg.clearClipPassword(30*1000)
+	})
 
 	el = tr.querySelector(`#loginimg_${id}`)
 	setTooltip(el, () => showStatus(autoLoginEnabled() ? "click to log in" : "click to fill out form"))
@@ -377,22 +384,6 @@ function cancelNewAccount(host) {
 	hide("#newacctdetail_sec")
 	show("#shownewacct_sec")
 	showStatus("")
-}
-
-// https://stackoverflow.com/questions/400212/how-do-i-copy-to-the-clipboard-in-javascript
-function clip(t) {
-	let ta = document.createElement("textarea")
-	ta.value = t
-	ta.style.position = "fixed"
-	document.body.appendChild(ta)
-	ta.select()
-	try {
-		document.execCommand("copy")
-	} catch (e) {
-		console.log("copy to clipboard err"); console.log(e)
-	} finally {
-		document.body.removeChild(ta)
-	}
 }
 
 // inject page-fillpw.js
