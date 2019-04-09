@@ -163,8 +163,8 @@ function newPw(id) {
 // <tr class="acct_row">
 // <td class="copy_btn"><span id="name_{id}">{name}</span></td>
 // <td class="copy_btn"><img id="pwimg_{id}" src="icons/pw.svg" /></td>
-// <td><img id="loginimg_{id}" src="icons/login.svg" /></td>
 // <td><img id="editimg_{id}" src="icons/edit.svg" /></td>
+// <td><img id="loginimg_{id}" src="icons/login.svg" /></td>
 // </tr>
 function accountRow(acct, id, setHidden, updateRecent) {
 	let [host, name, pw] = acct
@@ -172,11 +172,11 @@ function accountRow(acct, id, setHidden, updateRecent) {
 	let tr = document.createElement("tr")
 	tr.classList.add("acct_row")
 
-	let nodes = new Array(4)
-	nodes[0] = `<td class="copy_btn"><span id="name_${id}">${name}</span></td>`
-	nodes[1] = `<td class="copy_btn"><img id="pwimg_${id}" src="icons/pw.svg" width="18" /></td>`
-	nodes[2] = `<td><img id="loginimg_${id}" src="icons/login.svg" width="18" /></td>`
-	nodes[3] = `<td><img id="editimg_${id}" src="icons/edit.svg" width="18" /></td>`
+	let nodes = new Array(5)
+	nodes[0] = `<td class="acct_btn"><span class="copy_btn" id="name_${id}">${name}</span></td>`
+	nodes[1] = `<td class="acct_btn"><img class="copy_btn" id="pwimg_${id}" src="icons/pw.svg" width="18" /></td>`
+	nodes[2] = `<td class="acct_btn"><img id="editimg_${id}" src="icons/edit.svg" width="18" /></td>`
+	nodes[3] = `<td class="acct_btn"><img id="loginimg_${id}" src="icons/login.svg" width="18" /></td>`
 	tr.innerHTML = nodes.join("\n")
 
 	let el = tr.querySelector(`#name_${id}`)

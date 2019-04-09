@@ -1,6 +1,7 @@
 body {
 		font-family: sans-serif;
 		font-size: 1.1em;
+		color: #333;
 }
 
 .page {
@@ -63,10 +64,14 @@ tr:nth-child(even) {
     background-color: cyan;
 }
 
-.acct_row td:hover {
+.acct_row span:hover,img:hover {
 		background-color: lightskyblue;
 }
 
 .copy_btn {
 		cursor: copy;
+}
+
+.acct_btn {
+		padding: 0 0.3em 0 0.3em;
 }
