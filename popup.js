@@ -140,9 +140,11 @@ function newAcctNew() {
 		.then(tab => sendTabMessage(tab, {pw: pw, action: "new"}))
 		.then(resp => {
 			//console.log("new resp"); console.log(resp)
-			if (resp && resp.name && resp.name.length > 0) {
+			let name = docId("newacct_name")
+			// set name from page if not set
+			if (resp && resp.name && resp.name.length > 0 && !name.value) {
 				bg.setLastPw("", resp.name, "")
-				docId("newacct_name").value = resp.name
+				name.value = resp.name
 			}
 		})
 }
