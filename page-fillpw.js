@@ -55,6 +55,7 @@ function fillForm(state, req, sendResponse) {
 		}
 	}
 
+	let resp = {}
 	// no action means fill the form only
 	switch (req.action) {
 	case "submit":
@@ -85,9 +86,10 @@ function fillForm(state, req, sendResponse) {
 			}
 		}
 		//console.log("send back name"); console.log(nval)
-		sendResponse({name: nval})
+		resp = {name: nval}
 		break
 	}
+	sendResponse(resp)
 }
 
 function setFieldValue(field, value) {
