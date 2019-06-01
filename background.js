@@ -4,6 +4,12 @@
 // - search a site
 // - get form confirmed from executeScript
 
+// rearchitecture
+// - separate storage and password management
+// - storage can be a general storage system available to other extensions
+//    - authentication and encryption
+//    - store diffset and help resolve conflicts
+
 // notes:
 //
 // pw # memorized
@@ -36,7 +42,7 @@
 // content_scripts is injected to every iframe and runs independently, when all_frames is true
 
 const localBackend = "http://localhost:10008"
-const prodBackend = "https://54.67.41.163.sslip.io:10008"
+const prodBackend = "https://54.183.246.147.sslip.io:10008"
 const postTimeout = 10000 // 10s
 
 var isChrome = navigator.appVersion.indexOf(" Chrome/") !== -1
