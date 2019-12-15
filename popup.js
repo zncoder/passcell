@@ -4,13 +4,6 @@ let hiddenWhitelist = new Set([
 	"online.citi.com",
 ])
 
-getBackgroundPage()
-	.then(x => {
-		bg = x
-		loadPage()
-	})
-	.catch(e => { console.log("popup err"); console.log(e); })
-
 function loadPage() {
 	//console.log("openpopup")
 	hide(".page")
@@ -38,7 +31,7 @@ function loadPage() {
 	setTooltip(el, () => showStatus("log in to your account"))
 }
 
-function showSites() {
+async function showSites() {
 	if (bg.isChrome) {
 		docId("oldaccts_sec").classList.add("oldaccts_chrome")
 	}
@@ -50,7 +43,9 @@ function showSites() {
 	show("#site_sec")
 	show("#shownewacct_sec")
 	docId("shownewacct_acct").addEventListener("click", showNewAccount)
-	currentTab().then(tab => hydrateSitePage(tidyUrl(tab.url)))
+
+	let tab = await currentTab()
+	hydrateSitePage(tidyUrl(tab.url))
 }
 
 function showSignUp() {
@@ -133,20 +128,18 @@ function showAutoLoginStatus() {
 	showStatus(autoLoginEnabled() ? "click to disable auto login" : "click to enable auto login")
 }
 
-function newAcctNew() {
+async function newAcctNew() {
 	let pw = newPw("newacct_pw")
 	bg.setLastPw(docId("newacct_host").value, docId("newacct_name").value, pw)
-	currentTab()
-		.then(tab => sendTabMessage(tab, {pw: pw, action: "new"}))
-		.then(resp => {
-			//console.log("new resp"); console.log(resp)
-			let name = docId("newacct_name")
-			// set name from page if not set
-			if (resp && resp.name && resp.name.length > 0 && !name.value) {
-				bg.setLastPw("", resp.name, "")
-				name.value = resp.name
-			}
-		})
+	let tab = await currentTab()
+	let resp = await sendTabMessage(tab, {pw: pw, action: "new"})
+	//console.log("new resp"); console.log(resp)
+	let name = docId("newacct_name")
+	// set name from page if not set
+	if (resp && resp.name && resp.name.length > 0 && !name.value) {
+		bg.setLastPw("", resp.name, "")
+		name.value = resp.name
+	}
 }
 
 function newPw(id) {
@@ -243,7 +236,7 @@ function editAccount(host, name, pw) {
 	show("#editacctdetail_sec")
 }
 
-function saveEditAccount(ev) {
+async function saveEditAccount(ev) {
 	ev.preventDefault()
 	let oldHost = docId("editacct_old_host").value
 	let oldName = docId("editacct_old_name").value
@@ -251,10 +244,11 @@ function saveEditAccount(ev) {
 	let host = docId("editacct_host").value
 	let name = docId("editacct_name").value
 	let pw = docId("editacct_pw").value
-	bg.updateAccount([
+	await bg.updateAccount([
 		["remove", oldHost, oldName, oldPw],
 		["add", host, name, pw],
-	]).then(finishEditAccount)
+	])
+	finishEditAccount()
 }
 
 function newAcctEdit() {
@@ -265,13 +259,14 @@ function newAcctEdit() {
 	}
 }
 
-function removeEditAccount() {
+async function removeEditAccount() {
 	let oldHost = docId("editacct_old_host").value
 	let oldName = docId("editacct_old_name").value
 	let oldPw = docId("editacct_old_pw").value
-	bg.updateAccount([
+	await bg.updateAccount([
 		["remove", oldHost, oldName, oldPw],
-	]).then(finishEditAccount)
+	])
+	finishEditAccount()
 }
 
 function finishEditAccount() {
@@ -288,31 +283,29 @@ function autoLoginEnabled() {
 	return docId("autologin").getAttribute("mystate") === "1"
 }
 
-function fillPassword(host, name, pw, setHidden, updateRecent) {
+async function fillPassword(host, name, pw, setHidden, updateRecent) {
 	let autologin = autoLoginEnabled()
 	bg.accountSelected(host, name, updateRecent, autologin)
 
-	currentTab()
-		.then(tab => {
-			let msg = {name: name, pw: pw}
-			if (autologin) {
-				msg.action = "submit"
-			}
-			if (setHidden) {
-				msg.hidden = true
-			}
-			return sendTabMessage(tab, msg)
-		})
-		.then(window.close)
+	let tab = await currentTab()
+	let msg = {name: name, pw: pw}
+	if (autologin) {
+		msg.action = "submit"
+	}
+	if (setHidden) {
+		msg.hidden = true
+	}
+	await sendTabMessage(tab, msg)
+	window.close()
 }
 
-function fillUsername() {
+async function fillUsername() {
 	let name = docId("newacct_name").value
-	currentTab()
-		.then(tab => sendTabMessage(tab, {action: "setname", name: name}))
+	let tab = await currentTab()
+	return sendTabMessage(tab, {action: "setname", name: name})
 }
 
-function signUp(ev) {
+async function signUp(ev) {
 	ev.preventDefault()
 	let email = docId("signup_email").value
 	let el = docId("signup_pw")
@@ -322,16 +315,17 @@ function signUp(ev) {
 		return
 	}
 	
-	bg.signUp(email, pw)
-		.then(() => loadPage())
- 		.catch(e => {
-			console.log("signup err"); console.log(e);
-			el.select();
-			showStatus("signup error")
-		})
+	try {
+		await bg.signUp(email, pw)
+		loadPage()
+	} catch (e) {
+		console.log("signup err"); console.log(e);
+		el.select();
+		showStatus("signup error")
+	}
 }
 
-function logIn(ev) {
+async function logIn(ev) {
 	ev.preventDefault()
 	let el = docId("login_pw")
 	let pw = el.value
@@ -340,16 +334,17 @@ function logIn(ev) {
 		return
 	}
 
-	bg.logIn(pw)
-		.then(() => loadPage())
-		.catch(e => {
-			console.log("login err"); console.log(e)
-			el.select()
-			showStatus("login error")
-		})					 
+	try {
+		await bg.logIn(pw)
+		loadPage()
+	} catch (e) {
+		console.log("login err"); console.log(e)
+		el.select()
+		showStatus("login error")
+	}			 
 }
 
-function recoverLogIn(ev) {
+async function recoverLogIn(ev) {
 	ev.preventDefault()
 	let email = docId("login_email").value
 	let el = docId("login_pw")
@@ -359,22 +354,23 @@ function recoverLogIn(ev) {
 		return
 	}
 
-	bg.recoverLogIn(email, pw)
-		.then(() => loadPage())
-		.catch(e => {
-			console.log("recoverlogin err"); console.log(e)
-			el.select()
-			showStatus("recover login error")
-		})
+	try {
+		await bg.recoverLogIn(email, pw)
+		loadPage()
+	} catch (e) {
+		console.log("recoverlogin err"); console.log(e)
+		el.select()
+		showStatus("recover login error")
+	}
 }
 
-function saveNewAccount(ev) {
+async function saveNewAccount(ev) {
 	ev.preventDefault()
 	let host = docId("newacct_host").value
 	let name = docId("newacct_name").value
 	let pw = docId("newacct_pw").value
-	bg.addAccount(host, name, pw)
-		.then(window.close)
+	await bg.addAccount(host, name, pw)
+	window.close()
 }
 
 function cancelNewAccount(host) {
@@ -388,13 +384,22 @@ function cancelNewAccount(host) {
 	showStatus("")
 }
 
-// inject page-fillpw.js
-currentTab()
-	.then(tab => {
+async function init() {
+	bg = await getBackgroundPage()
+	try {
+		loadPage()
+
+		// inject page-fillpw.js
+		let tab = await currentTab()
 		chrome.tabs.executeScript(tab.id, {file: "page-fillpw.js", allFrames: true}, result => {
 			if (chrome.runtime.lastError) {
 				console.log("inject page-fillpw err:" + chrome.runtime.lastError.message)
 				return
 			}
 		})
-	})
+	} catch (e) {
+		console.log("popup err"); console.log(e) // preserve struct
+	}
+}
+
+init()

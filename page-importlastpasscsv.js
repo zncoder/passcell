@@ -1,11 +1,6 @@
 let bg
-getBackgroundPage()
-	.then(x => {
-		bg = x
-		docId("import").addEventListener("click", importLastPassCsv)
-	})
 
-function importLastPassCsv() {
+async function importLastPassCsv() {
 	let sites = []
 	let lns = docId("sites-ta").value.split("\n")
 	for (let ln of lns) {
@@ -40,9 +35,14 @@ function importLastPassCsv() {
 		return
 	}
 
-	bg.importSites(sites).then(() => {
-		chrome.tabs.query({active: true}, (tbs) => {
-			chrome.tabs.remove(tbs[0].id)
-		})
-	})
+	await bg.importSites(sites)
+	let tab = await currentTab()
+	chrome.tabs.remove(tab.id)
 }
+
+async function init() {
+	bg = await getBackgroundPage()
+	docId("import").addEventListener("click", importLastPassCsv)
+}
+
+init()

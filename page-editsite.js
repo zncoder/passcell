@@ -1,12 +1,6 @@
 let bg
 let lastIndex = 0
 
-getBackgroundPage()
-	.then(x => {
-		bg = x
-		hydrateSites()
-	})
-
 const acctTmpl = '<td><span id="host-{id}">{host}</span></td>\n\
 <td><span id="name-{id}">{name}</span></td>\n\
 <td><span id="pw-sp-{id}">******</span><input type="hidden" value="{pw}" id="pw-{id}"></td>\n\
@@ -67,7 +61,7 @@ function deleteEntry(i) {
 	el.parentNode.removeChild(el)
 }
 
-function saveSites() {
+async function saveSites() {
 	let sites = []
 	let trs = document.getElementsByTagName("tr")
 	for (let tr of trs) {
@@ -90,10 +84,14 @@ function saveSites() {
 		sites.push([h, n, p])
 	}
 
-	bg.resetSites(sites).then(() => {
-		//window.location.reload(false)
-		chrome.tabs.query({active: true}, (tbs) => {
-			chrome.tabs.remove(tbs[0].id)
-		})
-	})
+	await bg.resetSites(sites)
+	let tab = await currentTab()
+	chrome.tabs.remove(tab.id)
 }
+
+async function init() {
+	bg = await getBackgroundPage()
+	hydrateSites()
+}
+
+init()

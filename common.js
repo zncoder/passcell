@@ -1,3 +1,7 @@
+// todo:
+// - make backoff an object
+// - separate ui utils
+
 function nonce(n) {
 	let b = new Uint8Array(n)
 	crypto.getRandomValues(b)
@@ -49,10 +53,10 @@ function b2s(b) {
 	return new TextDecoder().decode(b)
 }
 
-function seal(key, b) {
+async function seal(key, b) {
 	let iv = nonce(12)
-	return crypto.subtle.encrypt({name: "AES-GCM", iv: iv}, key, b)
-		.then(c => {return {ct: bytes2hex(c), iv: bytes2hex(iv)}})
+	let c = await crypto.subtle.encrypt({name: "AES-GCM", iv: iv}, key, b)
+	return {ct: bytes2hex(c), iv: bytes2hex(iv)}
 }
 
 function unseal(key, x) {
@@ -113,37 +117,46 @@ function generatePw() {
 	return [b.join(""), len, sc]
 }
 
-function deriveBits(b, salt) {
-	return crypto.subtle.importKey("raw", b, {name: "PBKDF2"}, false, ["deriveKey"])
-		.then(mk => {
-			let alg = {
-				name: "PBKDF2",
-				salt: salt,
-				iterations: 1000,
-				hash: "SHA-256"
-			}
-			return crypto.subtle.deriveKey(alg, mk, {name: "AES-GCM", length: 256}, true, ["encrypt"])
-		})
-		.then(k => crypto.subtle.exportKey("raw", k))
-		.then(x => new Uint8Array(x))
+async function deriveBits(b, salt) {
+	let mk = await crypto.subtle.importKey("raw", b, {name: "PBKDF2"}, false, ["deriveKey"])
+	let alg = {
+		name: "PBKDF2",
+		salt: salt,
+		iterations: 1000,
+		hash: "SHA-256"
+	}
+	let k = await crypto.subtle.deriveKey(alg, mk, {name: "AES-GCM", length: 256}, true, ["encrypt"])
+	let x = await crypto.subtle.exportKey("raw", k)
+	return new Uint8Array(x)
 }
 
 function toKey(b) {
 	return crypto.subtle.importKey("raw", b, {name: "AES-GCM"}, false, ["encrypt", "decrypt"])
 }
 
-function deriveSealKey(pw, salt) {
-	return deriveBits(s2b(pw), salt)
-		.then(b => toKey(b))
+async function deriveSealKey(pw, salt) {
+	let b = await deriveBits(s2b(pw), salt)
+	return toKey(b)
 }
 
-function deriveAuthCred(pw, em, salt) {
-	let sk
-	return deriveBits(s2b(pw), salt)
-		.then(x => sk = x)
-		.then(deriveBits(s2b(em+"authsalt"), salt))
-		.then(asalt => deriveBits(sk, asalt))
-		.then(b => bytes2hex(b))
+async function deriveAuthCred(pw, em, salt) {
+	let [sk, asalt] = await Promise.all([
+		deriveBits(s2b(pw), salt),
+		deriveBits(s2b(em+"authsalt"), salt)])
+	// BUG: in previous version.
+	//    let sk
+	//    ...
+	//    .then(x => sk = x)
+	//    ...
+	//    .then(asalt => ...)
+	// asalt and sk are the same object.
+	//
+	// to fix this transparently, we need to send both auth creds to the server,
+	// and let server compare both auth creds with the saved auth cred,
+	// and update the saved auth creds if the old one matches.
+	//let b = await deriveBits(sk, asalt)
+	let b = await deriveBits(sk, sk)
+	return bytes2hex(b)
 }
 
 function docId(x) {
@@ -162,7 +175,7 @@ function hide(sel) {
 	}
 }
 
-function post(url, obj, timeout) {
+async function post(url, obj, timeout) {
 	let ac = new AbortController()
 	let arg = {
 		method: "POST",
@@ -172,24 +185,24 @@ function post(url, obj, timeout) {
 		signal: ac.signal,
 	}
 	let timeoutId = setTimeout(() => ac.abort(), timeout)
-	
-	return fetch(url, arg)
-		.then(resp => {
-			if (!resp.ok) {
-				console.log("fetch err:" + resp.statusText)
-				return Promise.reject(new Error(resp.statusText))
-			}
-			return resp.json()
-		})
-		.then(json => {
-			clearTimeout(timeoutId)
-			return json
-		})
+
+	try {
+		let resp = await fetch(url, arg)
+		if (!resp.ok) {
+			throw new Error(`resp not ok:${resp.statusText}`)
+		}
+		return await resp.json()
+	} catch (e) {
+		console.log(`fetch err:${e}`)
+		throw e
+	} finally {
+		clearTimeout(timeoutId)
+	}
 }
 
 // exponential backoff between 1s and 300s.
 // return new backoff upper bound
-function backoff(delay) {
+async function backoff(delay) {
 	// make sure delay is an integer in case of bug
 	delay = delay || 1000
 	if (delay < 1000) {
@@ -202,7 +215,9 @@ function backoff(delay) {
 	}
 	let x = Math.floor(Math.random() * (delay-100))+100 // min 100ms
 	console.log(`backoff ${x} out of ${delay}`)
-	return wait(x).then(() => delay)
+
+	await wait(x)
+	return delay
 }
 
 function localGet(keys) {

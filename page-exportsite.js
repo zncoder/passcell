@@ -1,9 +1,3 @@
-getBackgroundPage()
-	.then(bg => {
-		let sites = bg.getSites()
-		hydrateSites(sites)
-	})
-
 const siteTmpl = '<td>{host}</td><td>{name}</td><td>{pw}</td>'
 
 function hydrateSites(sites) {
@@ -21,3 +15,12 @@ function hydrateSites(sites) {
 		tb.appendChild(tr)
 	}
 }
+
+async function init() {
+	let bg = await getBackgroundPage()
+	let sites = bg.getSites()
+	hydrateSites(sites)
+}
+
+init()
+

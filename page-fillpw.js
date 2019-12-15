@@ -1,7 +1,6 @@
 // this script is injected by popup.
 // inited is set to true on first injection.
 var inited,
-		bgColor,
 		valueMark
 
 // need <all_urls> permission to deal with cross-origin iframes
@@ -12,7 +11,6 @@ function init() {
 	inited = true
 	console.log("page-fillpw inited")
 
-	bgColor = "#FDFF47"
 	valueMark = "_value_set_by_furyomaiifndduzn_"
 	chrome.runtime.onMessage.addListener(handleMessage)
 }
@@ -244,181 +242,6 @@ function visible(el) {
 		return false
 	}
 	return true
-}
-
-function showTip(s) {
-	let div = document.createElement("div")
-	div.innerText = s
-	div.style.position = "absolute"
-	div.style.top = "0"
-	div.style.left = "50%"
-	div.style.zIndex = 1
-	div.style.backgroundColor = bgColor
-
-	document.body.appendChild(div)
-	return div
-}
-
-function stopTip(tip) {
-	document.body.removeChild(tip)
-}
-
-//// dead code ////
-
-function locateNamePwFields() {
-	// find the pw field,
-	// - if only 1 visible pw field, use it
-	// - if multiple visible pw fields, start picker
-	// - first invisible pw field
-	//
-	// once pw field is found, locate the name field
-	return Promise.resolve(locatePwField())
-		.then(x => {
-			if (!x) {
-				return pickPw().then(pw => [pw, true])
-			}
-			return x
-		})
-		.then(x => {
-			let res = {pw: x[0], confirmed: x[1]}
-			let name = locateNameField(res.pw)
-			if (name) {
-				res.name = name
-			}
-			return res
-		})
-}
-
-// pickPw triggers picking pw field with mouse, and returns a Promise of the pw field
-function pickPw() {
-	return new Promise(resolve => {
-		let pk = newPicker(resolve)
-		pk.start()
-	})
-}
-
-function newPicker(resolve) {
-	let picker = {resolve: resolve}
-	// removeEventListener requires external function
-	picker.onMouseOver = ev => {
-		//console.log("over"); console.log(ev.target)
-		if (ev.target.type !== "password") {
-			return
-		}
-		picker.bgColor = ev.target.style.backgroundColor
-		//console.log("set bgcolor to"); console.log(picker.bgColor)
-		ev.target.style.backgroundColor = bgColor
-	}
-	
-	picker.onMouseOut = ev => {
-		//console.log("out"); console.log(ev.target)
-		if (ev.target.type !== "password") {
-			return
-		}
-		if (picker.bgColor !== undefined) {
-			//console.log("reset color")
-			ev.target.style.backgroundColor = picker.bgColor
-			picker.bgColor = undefined
-		}
-	}
-	
-	picker.onClick = ev => {
-		//console.log("click")
-		// stop picker on any click event
-		picker.onMouseOut(ev)
-		picker.stop()
-		
-		// left click only
-		if (ev.button != 0) {
-			picker.resolve(null)
-		}
-
-		let pw = ev.target
-		if (pw.type !== "password") {
-			console.log("ignore non-password:"); console.log(pw)
-			picker.resolve(null)
-			return
-		}
-		//console.log("pw"); console.log(pw)
-		picker.resolve(pw)
-	}
-	
-	picker.start = () => {
-		//console.log("start picker")
-		picker.tip = showTip("Please click to select the password field")
-		// TODO: highlight all pw fields?
-		document.body.style.cursor = "grab"
-		document.addEventListener("mouseover", picker.onMouseOver)
-		document.addEventListener("mouseout", picker.onMouseOut)
-		document.addEventListener("click", picker.onClick)
-	}
-	
-	picker.stop = () => {
-		//console.log("stop picker")
-		stopTip(picker.tip)
-		document.body.style.cursor = "initial"
-		document.removeEventListener("mouseover", picker.onMouseOver)
-		document.removeEventListener("mouseout", picker.onMouseOut)
-		document.removeEventListener("click", picker.onClick)
-	}
-
-	return picker
-}
-
-function locateNameField(pw) {
-	// search backward from pw to find the name field
-	let ins = pw.form.getElementsByTagName("input")
-	let i = 0
-	for (; i < ins.length; i++) {
-		if (ins[i] === pw) {
-			break
-		}
-	}
-	if (i === ins.length) {
-		return null
-	}
-	for (; i >= 0; i--) {
-		let x = ins[i]
-		if ((x.type === 'text' || x.type === 'email') && visible(x)) {
-			return x
-		}
-	}
-	return null
-}
-
-function queryPwAll() {
-	let pws = []
-	let ins = document.querySelectorAll("input")
-	for (let x of ins) {
-		if (x.type === "password") {
-			pws.push(x)
-		}
-	}
-	return pws
-}
-
-// return [pw, confirmed] or null
-function locatePwField() {
-	let pwinv, pw
-	let pwall = queryPwAll()
-	for (let x of pwall) {
-		if (visible(x)) {
-			if (pw) {
-				console.log("multiple visible passwords")
-				return null
-			}
-			pw = x
-		} else if (!pwinv) {
-			pwinv = x
-		}
-	}
-	if (pw) {
-		return [pw, true]
-	}
-	if (pwinv) {
-		return [pwinv, false]
-	}
-	return null
 }
 
 init()

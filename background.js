@@ -45,8 +45,6 @@ const localBackend = "http://localhost:10008"
 const prodBackend = "https://54.183.246.147.sslip.io:10008"
 const postTimeout = 10000 // 10s
 
-var isChrome = navigator.appVersion.indexOf(" Chrome/") !== -1
-
 let state = {
 	// masterKey is initialized from pw during signup or login.
 	// it is never saved.
@@ -139,51 +137,43 @@ function getEmail() {
 
 // https://github.com/diafygi/webcrypto-examples
 
-function loadPlaintextState() {
-	return localGet(["email", "mastersalt", "version", "recents", "noautologins"])
-		.then(x => {
-			//console.log("loadmastersalt"); console.log(x)
-			if (x.mastersalt) {
-				state.masterSalt = hex2bytes(x.mastersalt)
-				state.email = x.email
-				state.version = x.version
-				state.recents = x.recents || {}
-				state.noautologins = new Set(x.noautologins || [])
-			}
-		})
-		.catch(e => { console.log("loadplaintextstate err"); console.log(e); })
+async function loadPlaintextState() {
+	try {
+		let x = await localGet(["email", "mastersalt", "version", "recents", "noautologins"])
+		//console.log("loadmastersalt"); console.log(x)
+		if (!x.mastersalt) {
+			return
+		}
+		state.masterSalt = hex2bytes(x.mastersalt)
+		state.email = x.email
+		state.version = x.version
+		state.recents = x.recents || {}
+		state.noautologins = new Set(x.noautologins || [])
+	} catch(e) {
+		console.log("loadplaintextstate err"); console.log(e);
+	}
 }
 
 loadPlaintextState()						// no need to wait for it to finish?
 
-function signUp(em, pw) {
+async function signUp(em, pw) {
 	// sign up,
 	// upload state to server
 	let salt = nonce(24)
-	let k, tk
-	return deriveSealKey(pw, salt)
-		.then(x => {
-			k = x
-			return signUpRemote(state.backend, pw, em, salt)
-		})
-		.then(x => {
-			tk = x
-			return newTokener(state.backend, em, pw, salt)
-		})
-		.then(tr => {
-			state.masterKey = k
-			state.token = tk
-			state.email = em
-			state.masterSalt = salt
-			state.tokener = tr
+	let [k, tk, tr] = await Promise.all([
+		deriveSealKey(pw, salt),
+		signUpRemote(state.backend, em, pw, salt),
+		newTokener(state.backend, em, pw, salt)])
+	state.masterKey = k
+	state.token = tk
+	state.email = em
+	state.masterSalt = salt
+	state.tokener = tr
 
-			enableContextMenu()
-			return pushState()
-		})
-		.then(ver => {
-			onSignedIn()
-			return ver
-		})
+	enableContextMenu()
+	let ver = await pushState()
+	onSignedIn()
+	return ver
 }
 
 function onSignedIn() {
@@ -192,146 +182,126 @@ function onSignedIn() {
 	watchRemote()
 }
 
-function signUpRemote(url, pw, em, salt) {
-	return deriveAuthCred(pw, em, salt)
-		.then(cred => {
-			let v = {
-				email: em,
-				mastersalt: bytes2hex(salt),
-				cred: cred
-			}
-			return post(url+"/signup", v, postTimeout)
-		})
-		.then(res => {
-			// console.log("signup res:"); console.log(res)
-			return res.token
-		})
+async function signUpRemote(url, em, pw, salt) {
+	let cred = await deriveAuthCred(pw, em, salt)
+	let v = {
+		email: em,
+		mastersalt: bytes2hex(salt),
+		cred: cred
+	}
+	let res = await post(url+"/signup", v, postTimeout)
+	// console.log("signup res:"); console.log(res)
+	return res.token
 }
 
-function logIn(pw) {
-	return deriveSealKey(pw, state.masterSalt)
-		.then(k => loadSealedState(k))
-		.then(() => newTokener(state.backend, state.email, pw, state.masterSalt))
-		.then(tr => {
-			state.tokener = tr
-			return refreshToken()
-		})
-		.then(() => {			
-			enableContextMenu()
-			onSignedIn()
+async function logIn(pw) {
+	let k = await deriveSealKey(pw, state.masterSalt)
+	await loadSealedState(k)
+	let tr = await newTokener(state.backend, state.email, pw, state.masterSalt)
+	state.tokener = tr
+	await refreshToken()
+	enableContextMenu()
+	onSignedIn()
 			
-			if (state.diffset.length > 0) {
-				return applyDiffs()
-			}
-		})
+	if (state.diffset.length > 0) {
+		return applyDiffs()
+	}
 }
 
-function newTokener(url, em, pw, salt) {
-	return deriveAuthCred(pw, em, salt)
-		.then(cred => {
-			//console.log("cred"); console.log(cred)
-			let arg = {
-				email: em,
-				cred: cred
-			}
-			return () => {
-				return post(url+"/login", arg, postTimeout)
-					.then(res => {
-						console.log(`got token ${res.token}`)
-						return res.token
-					})
-			}
-		})
+class Tokener {
+	constructor(url, arg) {
+		this.url = url + "/login"
+		this.arg = arg
+	}
+
+	async refresh() {
+		let res = await post(this.url, this.arg, postTimeout)
+		console.log(`got token ${res.token}`)
+		return res.token
+	}
 }
 
-function refreshToken() {
+async function newTokener(url, em, pw, salt) {
+	let cred = await deriveAuthCred(pw, em, salt)
+	//console.log("cred"); console.log(cred)
+	let arg = {
+		email: em,
+		cred: cred
+	}
+	return new Tokener(url, arg)
+}
+
+async function refreshToken() {
 	console.log("refreshtoken")
-	return state.tokener()
-		.then(tk => state.token = tk)
+	state.token = await state.tokener.refresh()
+	return state.token
 }
 
-function recoverLogIn(em, pw) {
-	let salt, k, tr
-	return preLogInRemote(state.backend, em)
-		.then(x => {
-			salt = x
-			return deriveSealKey(pw, salt)
-		})
-		.then(x => {
-			k = x
-			return newTokener(state.backend, em, pw, salt)
-		})
-		.then(x => {
-			tr = x
-			return tr()
-		})
-		.then(tk => {
-			state.masterKey = k
-			state.token = tk
-			state.masterSalt = salt
-			state.email = em
-			state.tokener = tr
+async function recoverLogIn(em, pw) {
+	let salt = await preLogInRemote(state.backend, em)
+	let [k, tr] = await Promise.all([
+		deriveSealKey(pw, salt),
+		newTokener(state.backend, em, pw, salt)])
+	let tk = await tr.refresh()
+	state.masterKey = k
+	state.token = tk
+	state.masterSalt = salt
+	state.email = em
+	state.tokener = tr
 
-			enableContextMenu()
-			onSignedIn()
-		})
+	enableContextMenu()
+	onSignedIn()
 }
 
-function preLogInRemote(url, em) {
+async function preLogInRemote(url, em) {
 	let arg = {email: em}
-	return post(url+"/prelogin", arg, postTimeout)
-		.then(res => {
-			return hex2bytes(res.mastersalt)
-		})
+	let res = await post(url+"/prelogin", arg, postTimeout)
+	return hex2bytes(res.mastersalt)
 }
 
-function watchRemote() {
+async function watchRemote() {
 	if (stopWatch) {
 		console.log("stop remote watcher")
 		return
 	}
 
-	return pullRemote(true)
-		.then(() => {
-			// apply diffs that are not committed.
-			if (state.diffset.length > 0) {
-				console.log(`apply ${state.diffset.length} diffs`)
-				// catch errors to make sure watchRemote is chained
-				return applyDiffs()
-					.catch(e => {console.log("applydiffs after pull err:"); console.log(e)})
-			}
-		})
-		.then(() => {
-			return watchRemote()
-		})
+	await pullRemote(true)
+	// apply diffs that are not committed.
+	if (state.diffset.length > 0) {
+		console.log(`apply ${state.diffset.length} diffs`)
+		// catch errors to make sure watchRemote is chained
+		try {
+			await applyDiffs()
+		} catch(e) {
+			console.log("applydiffs after pull err:"); console.log(e)
+		}
+	}
+	return watchRemote()
 }
 
-function loadSealedState(key) {
-	return localGet(["sites", "diffset"])
-		.then(x => Promise.all([unsealObject(key, x.sites), unsealObject(key, x.diffset)]))
-		.then(x => {
-			//console.log("state unsealed")
-			let [ss, ds] = x
-			state.masterKey = key
-			state.sites = ss || []
-			state.diffset = ds || []
-		})
+async function loadSealedState(key) {
+	let x = await localGet(["sites", "diffset"])
+	let [ss, ds] = await Promise.all([unsealObject(key, x.sites), unsealObject(key, x.diffset)])
+	//console.log("state unsealed")
+	state.masterKey = key
+	state.sites = ss || []
+	state.diffset = ds || []
 }
 
-function unsealObject(key, s) {
+async function unsealObject(key, s) {
 	if (!s) {
-		return Promise.resolve(undefined)
+		return []
 	}
 	let x = JSON.parse(s)
 	//console.log("x"); console.log(x)
-	return unseal(key, x)
-		.then(b => JSON.parse(b2s(b)))
+	let b = await unseal(key, x)
+	return JSON.parse(b2s(b))
 }
 
-function sealObject(key, ss) {
+async function sealObject(key, ss) {
 	let s = JSON.stringify(ss)
-	return seal(key, s2b(s))
-		.then(x => JSON.stringify(x))
+	let x = await seal(key, s2b(s))
+	return JSON.stringify(x)
 }
 
 function applyDiffs() {
@@ -351,19 +321,23 @@ function applyDiffs() {
 }
 
 // save state locally and push to remote
-function pushState() {
-	let ct
-	let ctds
+async function pushState() {
 	// tie diffset with this push. retry would use the same end
 	let end = state.base + state.diffset.length
 	//console.log(`pushstate base:${state.base},end:${end}`)
-	return Promise.all([state.sites, state.diffset]
-										 .map(x => sealObject(state.masterKey, x)))
-		.then(x => {
-			[ct, ctds] = x
-			return saveState(ct, ctds)
-		})
-		.then(() => pushRemote(state.backend, state.token, state.version, ct, end, 0))
+	let [ct, ctds] = await Promise.all(
+		[state.sites, state.diffset]
+			.map(x => sealObject(state.masterKey, x)))
+	await saveState(ct, ctds)
+	return pushRemote(state.backend, state.token, state.version, ct, end, 0)
+}
+
+async function pushStateNoError() {
+	try {
+		await pushState()
+	} catch(e) {
+		console.log("pushstate err"); console.log(e)
+	}
 }
 
 // save state locally
@@ -378,9 +352,9 @@ function saveState(ct, ctds) {
 	return localSet(v)
 }
 
-function saveDiffset() {
-	return sealObject(state.masterKey, state.diffset)
-		.then(ctds => localSet({diffset: ctds}))
+async function saveDiffset() {
+	let ctds = await sealObject(state.masterKey, state.diffset)
+	return localSet({diffset: ctds})
 }
 
 // pullRemote:
@@ -397,22 +371,19 @@ function saveDiffset() {
 //        - each push is sites + offset to diffset (index = offset - base)
 //    - no retry on conflict push, as pullRemote would overwrite local sites.
 
-function pullRemote(wait) {
-	return fetchRemote(state.backend, state.masterKey, state.token, state.version, wait, 0)
-		.then(vctss => {
-			let [ver, ct, ss] = vctss
-			//console.log(`pullremote got version:${ver}`)
-			if (ver <= state.version) {
-				return
-			}
+async function pullRemote(wait) {
+	let [ver, ct, ss] = await fetchRemote(state.backend, state.masterKey, state.token, state.version, wait, 0)
+	//console.log(`pullremote got version:${ver}`)
+	if (ver <= state.version) {
+		return
+	}
 			
-			state.version = ver
-			state.sites = ss
-			return saveState(ct)
-		})
+	state.version = ver
+	state.sites = ss
+	return saveState(ct)
 }
 
-function fetchRemote(url, k, tk, ver, wait, delay) {
+async function fetchRemote(url, k, tk, ver, wait, delay) {
 	let arg = {
 		token: tk,
 		cur_version: ver,
@@ -422,44 +393,36 @@ function fetchRemote(url, k, tk, ver, wait, delay) {
 	let to = wait ? 90*1000 : 10*1000
 
 	//console.log(`fetchremote with timeout:${to}`)
-	return post(url+"/get", arg, to)
-		.then(res => {
-			console.log(`fetchremote version:${res.version}`)
-			let x = JSON.parse(res.value)
-			return unsealObject(k, x.sites).then(ss => [res.version, x.sites, ss])
-		})
-		.catch(e => {
-			if (!retryOnErr) {
-				console.log("fetchremote err"); console.log(e)
-				return Promise.reject(e)
-			}
-			return backoffRefresh(delay, tk, e)			
-				.then(x => {
-					[delay, tk] = x
-					return fetchRemote(url, k, tk, ver, wait, delay)
-				})
-		})
+	try {
+		let res = await post(url+"/get", arg, to)
+		console.log(`fetchremote version:${res.version}`)
+		let x = JSON.parse(res.value)
+		let ss = await unsealObject(k, x.sites)
+		return [res.version, x.sites, ss]
+	} catch(e) {
+		if (!retryOnErr) {
+			console.log("fetchremote err"); console.log(e)
+			throw e
+		}
+		[delay, tk] = await backoffRefresh(delay, tk, e)
+		return fetchRemote(url, k, tk, ver, wait, delay)
+	}
 }
 
-function backoffRefresh(delay, tk, e) {
+async function backoffRefresh(delay, tk, e) {
 	if (e.name === "AbortError") {
 		// fetch aborted, no backoff and reset delay
-		return Promise.resolve([0, tk])
+		return [0, tk]
 	}
 
-	return backoff(delay)
-		.then(x => {
-			delay = x
-
-			if (e.message === "Unauthorized") {
-				return refreshToken()
-			}
-			return tk
-		})
-		.then(tk => [delay, tk])
+	delay = await backoff(delay)
+	if (e.message === "Unauthorized") {
+		tk = await refreshToken()
+	}
+	return [delay, tk]
 }
 
-function pushRemote(url, tk, ver, ct, end, delay) {
+async function pushRemote(url, tk, ver, ct, end, delay) {
 	let s = JSON.stringify({sites: ct}) // save as object for future changes.
 	let arg = {
 		token: tk,
@@ -467,35 +430,31 @@ function pushRemote(url, tk, ver, ct, end, delay) {
 		value: s
 	}
 
-	return post(url+"/put", arg, postTimeout)
-		.then(res => {
-			if (end > state.base) {
-				console.log(`pushed version:${res.version}, truncate diffset from ${state.base} to ${end}`)
-				state.diffset.splice(0, end - state.base)
-				state.base = end
-				return saveDiffset()
-			} else {
-				console.log(`diffset:${end} of version:${res.version} is superseded`)
-			}
-		})
-		.catch(e => {
-			console.log(`pushremote at version:${ver},end:${end} err`); console.log(e)
-			if (e.message === "Conflict") {
-				// no retry on conflict version.
-				// let pullremote retry push after get the latest version.
-				console.log("conflict version")
-				return Promise.reject(e)
-			}
-			if (!retryOnErr) {
-				console.log("pushremote err"); console.log(e)
-				return Promise.reject(e)
-			}
-			return backoffRefresh(delay, tk, e)
-				.then(x => {
-					[delay, tk] = x
-					return pushRemote(url, tk, ver, ct, end, delay)
-				})
-		})
+	try {
+		let res = await post(url+"/put", arg, postTimeout)
+		if (end > state.base) {
+			console.log(`pushed version:${res.version}, truncate diffset from ${state.base} to ${end}`)
+			state.diffset.splice(0, end - state.base)
+			state.base = end
+			return saveDiffset()
+		} else {
+			console.log(`diffset:${end} of version:${res.version} is superseded`)
+		}
+	} catch(e) {
+		console.log(`pushremote at version:${ver},end:${end} err`); console.log(e)
+		if (e.message === "Conflict") {
+			// no retry on conflict version.
+			// let pullremote retry push after get the latest version.
+			console.log("conflict version")
+			throw e
+		}
+		if (!retryOnErr) {
+			console.log("pushremote err"); console.log(e)
+			throw e
+		}
+		[delay, tk] = await backoffRefresh(delay, tk, e)
+		return pushRemote(url, tk, ver, ct, end, delay)
+	}
 }
 
 function addSiteEntry(host, name, pw) {
@@ -524,8 +483,7 @@ function removeSiteEntry(host, name) {
 function addAccount(host, name, pw) {
 	addSite(host, name, pw)
 	clearLastPw(host)
-	return pushState()
-		.catch(e => {console.log("pushstate err"); console.log(e)})
+	return pushStateNoError()
 }
 
 function addSite(host, name, pw) {
@@ -552,8 +510,7 @@ function updateAccount(diffs) {
 		}
 	}
 
-	return pushState()
-		.catch(e => {console.log("pushstate err"); console.log(e)})
+	return pushStateNoError()
 }
 
 function accountSelected(host, name, updateRecent, autologin) {
@@ -585,7 +542,7 @@ function accountSelected(host, name, updateRecent, autologin) {
 	}
 
 	if (Object.getOwnPropertyNames(change).length == 0) {
-		return Promise.resolve(true)
+		return true
 	}
 	return localSet(change)
 }
@@ -676,15 +633,13 @@ function resetSites(sts) {
 		ss.push([h, n, p])
 	}
 	state.sites = ss
-	return pushState()
-		.catch(e => { console.log("resetsites err"); console.log(e); })
+	return pushStateNoError()
 }
 
-function clearClipPassword(to) {
-	wait(to).then(() => {
-		console.log("clear password")
-		clip("passcell password cleared")
-	})
+async function clearClipPassword(to) {
+	await wait(to)
+	console.log("clear password")
+	clip("passcell password cleared")
 }
 
 function importSites(ss) {
@@ -693,14 +648,16 @@ function importSites(ss) {
 		let [h, n, p] = x
 		addSite(h, n, p)
 	}
-	return pushState()
-		.catch(e => { console.log("importsites err"); console.log(e); })
+	return pushStateNoError()
 }
 
-function handleImportSites(ss, sendResponse) {
-	return importSites(ss)
-		.then(() => sendResponse({response: "sites imported"}))
-		.catch(e => { console.log("handleimportsites err"); console.log(e); })
+async function handleImportSites(ss, sendResponse) {
+	try {
+		await importSites(ss)
+		sendResponse({response: "sites imported"})
+	} catch(e) {
+		console.log("handleimportsites err"); console.log(e)
+	}
 }
 
 function handleNewSite(req, sendResponse) {
