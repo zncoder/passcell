@@ -1,6 +1,4 @@
 // todo:
-// - make backoff an object
-// - separate ui utils
 // - make pwgen an object
 
 function nonce(n) {
@@ -176,23 +174,30 @@ async function post(url, obj, timeout) {
 }
 
 // exponential backoff between 1s and 300s.
-// return new backoff upper bound
-async function backoff(delay) {
-	// make sure delay is an integer in case of bug
-	delay = delay || 1000
-	if (delay < 1000) {
-		delay = 1000
-	} else {
-		delay *= 2
-		if (delay > 300*1000) {
-			delay = 300*1000
-		}
+class Backoff {
+	constructor() {
+		this.delay = 0
 	}
-	let x = Math.floor(Math.random() * (delay-100))+100 // min 100ms
-	console.log(`backoff ${x} out of ${delay}`)
 
-	await wait(x)
-	return delay
+	wait() {
+		this.delay = this.delay || 1000
+		if (this.delay < 1000) {
+			this.delay = 1000
+		} else {
+			this.delay *= 2
+			if (this.delay > 300*1000) {
+				this.delay = 300*1000
+			}
+		}
+		let x = Math.floor(Math.random() * (this.delay-100))+100 // min 100ms
+		console.log(`backoff ${x} out of ${this.delay}`)
+
+		return wait(x)
+	}
+
+	reset() {
+		this.delay = 0
+	}
 }
 
 function localGet(keys) {

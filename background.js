@@ -329,7 +329,7 @@ async function pushState() {
 		[state.sites, state.diffset]
 			.map(x => sealObject(state.masterKey, x)))
 	await saveState(ct, ctds)
-	return pushRemote(state.backend, state.token, state.version, ct, end, 0)
+	return pushRemote(state.backend, state.token, state.version, ct, end, new Backoff())
 }
 
 async function pushStateNoError() {
@@ -372,7 +372,7 @@ async function saveDiffset() {
 //    - no retry on conflict push, as pullRemote would overwrite local sites.
 
 async function pullRemote(wait) {
-	let [ver, ct, ss] = await fetchRemote(state.backend, state.masterKey, state.token, state.version, wait, 0)
+	let [ver, ct, ss] = await fetchRemote(state.backend, state.masterKey, state.token, state.version, wait, new Backoff())
 	//console.log(`pullremote got version:${ver}`)
 	if (ver <= state.version) {
 		return
@@ -383,7 +383,7 @@ async function pullRemote(wait) {
 	return saveState(ct)
 }
 
-async function fetchRemote(url, k, tk, ver, wait, delay) {
+async function fetchRemote(url, k, tk, ver, wait, bo) {
 	let arg = {
 		token: tk,
 		cur_version: ver,
@@ -404,25 +404,26 @@ async function fetchRemote(url, k, tk, ver, wait, delay) {
 			console.log("fetchremote err"); console.log(e)
 			throw e
 		}
-		[delay, tk] = await backoffRefresh(delay, tk, e)
-		return fetchRemote(url, k, tk, ver, wait, delay)
+		tk = await backoffRefresh(tk, e, bo)
+		return fetchRemote(url, k, tk, ver, wait, bo)
 	}
 }
 
-async function backoffRefresh(delay, tk, e) {
+async function backoffRefresh(tk, e, bo) {
 	if (e.name === "AbortError") {
 		// fetch aborted, no backoff and reset delay
-		return [0, tk]
+		bo.reset()
+		return tk
 	}
 
-	delay = await backoff(delay)
+	await bo.wait()
 	if (e.message === "Unauthorized") {
 		tk = await refreshToken()
 	}
-	return [delay, tk]
+	return tk
 }
 
-async function pushRemote(url, tk, ver, ct, end, delay) {
+async function pushRemote(url, tk, ver, ct, end, bo) {
 	let s = JSON.stringify({sites: ct}) // save as object for future changes.
 	let arg = {
 		token: tk,
@@ -452,8 +453,8 @@ async function pushRemote(url, tk, ver, ct, end, delay) {
 			console.log("pushremote err"); console.log(e)
 			throw e
 		}
-		[delay, tk] = await backoffRefresh(delay, tk, e)
-		return pushRemote(url, tk, ver, ct, end, delay)
+		tk = await backoffRefresh(tk, e, bo)
+		return pushRemote(url, tk, ver, ct, end, bo)
 	}
 }
 
