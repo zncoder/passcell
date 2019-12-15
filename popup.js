@@ -60,7 +60,7 @@ function showLogIn() {
 	show("#login_sec")
 
 	let email = bg.getEmail()
-	if (!empty(email)) {
+	if (email) {
 		let el = docId("login_email")
 		el.value = email
 		el.readOnly = true
@@ -310,7 +310,7 @@ async function signUp(ev) {
 	let email = docId("signup_email").value
 	let el = docId("signup_pw")
 	let pw = el.value
-	if (empty(email) || empty(pw) || docId("signup_pw_m").value !== pw) {
+	if (!email || !pw || docId("signup_pw_m").value !== pw) {
 		console.log("empty or mismatched pw")
 		return
 	}
@@ -329,7 +329,7 @@ async function logIn(ev) {
 	ev.preventDefault()
 	let el = docId("login_pw")
 	let pw = el.value
-	if (empty(pw)) {
+	if (!pw) {
 		console.log("empty pw")
 		return
 	}
@@ -349,7 +349,7 @@ async function recoverLogIn(ev) {
 	let email = docId("login_email").value
 	let el = docId("login_pw")
 	let pw = el.value
-	if (empty(email) || empty(pw)) {
+	if (!email || !pw) {
 		console.log("empty email or pw")
 		return
 	}

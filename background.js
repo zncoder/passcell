@@ -636,12 +636,6 @@ function resetSites(sts) {
 	return pushStateNoError()
 }
 
-async function clearClipPassword(to) {
-	await wait(to)
-	console.log("clear password")
-	clip("passcell password cleared")
-}
-
 function importSites(ss) {
 	//console.log("importsites"); console.log(ss)
 	for (let x of ss) {

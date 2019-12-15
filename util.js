@@ -1,6 +1,7 @@
 // todo:
 // - make backoff an object
 // - separate ui utils
+// - make pwgen an object
 
 function nonce(n) {
 	let b = new Uint8Array(n)
@@ -63,16 +64,6 @@ function unseal(key, x) {
 	let ct = hex2bytes(x.ct)
 	let iv = hex2bytes(x.iv)
 	return crypto.subtle.decrypt({name: "AES-GCM", iv: iv}, key, ct)
-}
-
-function empty(s) {
-	return !s || s.length === 0
-}
-
-function tidyUrl(u) {
-	let a = document.createElement("a")
-	a.href = u
-	return [a.protocol, a.host, a.pathname]
 }
 
 // password generator, special char is $
@@ -159,22 +150,6 @@ async function deriveAuthCred(pw, em, salt) {
 	return bytes2hex(b)
 }
 
-function docId(x) {
-	return document.getElementById(x)
-}
-
-function show(sel) {
-	for (let el of document.querySelectorAll(sel)) {
-		el.style.display = "block"
-	}
-}
-
-function hide(sel) {
-	for (let el of document.querySelectorAll(sel)) {
-		el.style.display = "none"
-	}
-}
-
 async function post(url, obj, timeout) {
 	let ac = new AbortController()
 	let arg = {
@@ -244,44 +219,6 @@ function localSet(items) {
 			resolve(true)
 		})
 	})
-}
-
-function currentTab() {
-	return new Promise(resolve => {
-		chrome.tabs.query({active: true, currentWindow: true}, ts => resolve(ts[0]))
-	})
-}
-
-function sendTabMessage(tab, msg) {
-	return new Promise(resolve => {
-		chrome.tabs.sendMessage(tab.id, msg, resp => {
-			if (chrome.runtime.lastError) {
-				console.log("sendtabmessage err:" + chrome.runtime.lastError.message)
-				return
-			}
-			resolve(resp)
-		})
-	})
-}
-
-// https://stackoverflow.com/questions/400212/how-do-i-copy-to-the-clipboard-in-javascript
-function clip(t) {
-	let ta = document.createElement("textarea")
-	ta.value = t
-	ta.style.position = "fixed"
-	document.body.appendChild(ta)
-	ta.select()
-	try {
-		document.execCommand("copy")
-	} catch (e) {
-		console.log("copy to clipboard err"); console.log(e)
-	} finally {
-		document.body.removeChild(ta)
-	}
-}
-
-function getBackgroundPage() {
-	return new Promise(resolve => chrome.runtime.getBackgroundPage(bg => resolve(bg)))
 }
 
 // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Using_promises
