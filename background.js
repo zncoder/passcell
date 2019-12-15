@@ -653,6 +653,7 @@ function matchSite(host) {
 }
 
 // *.a.b => a.b, a.b => a.b, a => a
+// TODO: doesn't work for e.g. .com.cn hosts
 function hostDomain(host) {
 	let i = host.lastIndexOf(".")
 	if (i <= 0) {
