@@ -1,6 +1,3 @@
-// todo:
-// - make pwgen an object
-
 function nonce(n) {
 	let b = new Uint8Array(n)
 	crypto.getRandomValues(b)
@@ -64,47 +61,57 @@ function unseal(key, x) {
 	return crypto.subtle.decrypt({name: "AES-GCM", iv: iv}, key, ct)
 }
 
-// password generator, special char is $
-const pwCharset = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
-
-// pwMode:
-// 0 - 32B, no special char
-// 1 - 32B, special char
-// 2 - 16B, no special char
-// 3 - 16B, special char
-// 4 - 8B, no special char
-// 5 - 8B, special char
-let pwMode = 0
-
-function generatePw() {
-	let len = 32
-	switch (pwMode - pwMode%2) {
-	case 0:
-		len = 32
-		break
-	case 2:
-		len = 16
-		break
-	case 4:
-		len = 8
-		break
+class PwGen {
+	constructor() {
+		// mode:
+		// 0 - 16B, no special char
+		// 1 - 16B, special char
+		// 2 - 8B, no special char
+		// 3 - 8B, special char
+		// 4 - 32B, no special char
+		// 5 - 32B, special char
+		this.mode = 0
 	}
 
-	let b = new Array(len)
-	for (let i = 0; i < len; i++) {
-		let x = int8n(pwCharset.length)
-		b[i] = pwCharset.charAt(x)
+	next() {
+		let len = 16
+		switch (this.mode) {
+		case 0:
+		case 1:
+			len = 16
+			break
+		case 2:
+		case 3:
+			len = 8
+			break
+		case 4:
+		case 5:
+			len = 32
+			break
+		}
+
+		let b = new Array(len)
+		for (let i = 0; i < len; i++) {
+			let x = int8n(PwGen.charset.length)
+			b[i] = PwGen.charset.charAt(x)
+		}
+
+		let sc = (this.mode % 2) !== 0
+		if (sc) {
+			let x = int8n(len)
+			b[x] = "$"
+		}
+		return [b.join(""), len, sc]
 	}
 
-	let sc = (pwMode % 2) !== 0
-	if (sc) {
-		let x = int8n(len)
-		b[x] = "$"
+	rotate() {
+		this.mode = (this.mode + 1) % 6
+		return this.next()
 	}
-	
-	pwMode = (pwMode + 1) % 6
-	return [b.join(""), len, sc]
 }
+
+// password generator, special char is $
+PwGen.charset = "123456789ABCDEFGHJKLMNPQRSTUVWXYZabcdefghijkmnopqrstuvwxyz"
 
 async function deriveBits(b, salt) {
 	let mk = await crypto.subtle.importKey("raw", b, {name: "PBKDF2"}, false, ["deriveKey"])

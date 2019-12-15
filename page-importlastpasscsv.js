@@ -22,7 +22,7 @@ async function importLastPassCsv() {
 			console.log("ignore empty name/pw line:" + ln)
 			continue
 		}
-		let h = tidyUrl(url)[1]
+		let h = parseUrl(url)[1]
 		if (!h) {
 			console.log("ignore empty host line:" + ln)
 			continue

@@ -56,6 +56,7 @@ let state = {
 	tokener: null,
 	// last pw that is not saved, [host, name, pw]
 	lastPw: undefined,
+	pwGen: new PwGen(),
 
 	email: "",
 	// masterSalt and sealed sites are saved on server
@@ -117,6 +118,10 @@ function clearLastPw(host) {
 		state.lastPw = undefined
 		chrome.browserAction.setBadgeText({text: ""})
 	}
+}
+
+function pwGen() {
+	return state.pwGen
 }
 
 function getSites() {

@@ -45,7 +45,7 @@ async function showSites() {
 	docId("shownewacct_acct").addEventListener("click", showNewAccount)
 
 	let tab = await currentTab()
-	hydrateSitePage(tidyUrl(tab.url))
+	hydrateSitePage(parseUrl(tab.url))
 }
 
 function showSignUp() {
@@ -142,8 +142,15 @@ async function newAcctNew() {
 	}
 }
 
+let firstPw = true
+
 function newPw(id) {
-	let [pw, len, sc] = generatePw()
+	if (!firstPw) {
+		bg.pwGen().rotate()
+	} else {
+		firstPw = false
+	}
+	let [pw, len, sc] = bg.pwGen().next()
 	docId(id).value = pw
 
 	let s = `password size is ${len}`

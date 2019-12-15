@@ -1,4 +1,4 @@
-function tidyUrl(u) {
+function parseUrl(u) {
 	let a = document.createElement("a")
 	a.href = u
 	return [a.protocol, a.host, a.pathname]
