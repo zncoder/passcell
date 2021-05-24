@@ -42,7 +42,7 @@
 // content_scripts is injected to every iframe and runs independently, when all_frames is true
 
 const localBackend = "http://localhost:10008"
-const prodBackend = "https://54.183.246.147.sslip.io:10008"
+const prodBackend = "https://18.144.5.6.sslip.io:10008"
 const postTimeout = 10000 // 10s
 
 let state = {
