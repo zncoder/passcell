@@ -1,4 +1,4 @@
-// TODO: 
+// TODO:
 // - notes
 // - keep log of all changes in server
 // - search a site
@@ -42,7 +42,7 @@
 // content_scripts is injected to every iframe and runs independently, when all_frames is true
 
 const localBackend = "http://localhost:10008"
-const prodBackend = "https://18.144.5.6.sslip.io:10008"
+const prodBackend = "https://13.52.183.114.sslip.io:10008"
 const postTimeout = 10000 // 10s
 
 let state = {
@@ -207,7 +207,7 @@ async function logIn(pw) {
 	await refreshToken()
 	enableContextMenu()
 	onSignedIn()
-			
+
 	if (state.diffset.length > 0) {
 		return applyDiffs()
 	}
@@ -382,7 +382,7 @@ async function pullRemote(wait) {
 	if (ver <= state.version) {
 		return
 	}
-			
+
 	state.version = ver
 	state.sites = ss
 	return saveState(ct)
@@ -587,7 +587,7 @@ function matchSite(host) {
 		if (a[1] === b[1]) {
 			return 0
 		}
-		
+
 		let ia = recentIndex(recents, a[1])
 		let ib = recentIndex(recents, b[1])
 		if (ia === 0) {
@@ -605,7 +605,7 @@ function matchSite(host) {
 		if (ib >= 0) {
 			return 1
 		}
-		
+
 		if (a[1] < b[1]) {
 			return -1
 		}
