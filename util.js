@@ -169,6 +169,7 @@ async function post(url, obj, timeout) {
 	try {
 		let resp = await fetch(url, arg)
 		if (!resp.ok) {
+			console.log('fetch err', url, arg, await resp.text())
 			throw new Error(`resp not ok:${resp.statusText}`)
 		}
 		return await resp.json()
