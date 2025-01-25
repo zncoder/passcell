@@ -1,10 +1,10 @@
 {
   "name": "PassCell",
-  "version": "1.9.8",
+  "version": "1.9.11",
   "manifest_version": 2,
   "description": "Generate and manage passwords",
   "icons": {
-    "48": "icons/48.png"
+    "48": "icons/w48.png"
   },
 	"permissions": [
 		"storage",
@@ -18,7 +18,7 @@
 	"browser_action": {
 		"browser_style": true,
 		"default_popup": "popup.html",
-		"default_icon": "icons/32.png",
+		"default_icon": "icons/w32.png",
 		"default_title": "Manage password of this site"
 	}
 }
